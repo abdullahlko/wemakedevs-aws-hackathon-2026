@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from math import atan2, cos, radians, sin, sqrt
-
+from services.sunlight import calculate_sunlight
 
 def haversine_distance_km(
     lat1: float,
@@ -160,5 +160,24 @@ def add_segment_timing(
         segment["duration_minutes"] = round(
             segment_duration
         )
+
+def add_segment_sunlight(segments: list[dict]):
+    for segment in segments:
+        coordinates = segment["coordinates"]
+
+        midpoint_index = len(coordinates) // 2
+        midpoint = coordinates[midpoint_index]
+
+        midpoint_lng = midpoint[0]
+        midpoint_lat = midpoint[1]
+
+        sunlight = calculate_sunlight(
+            latitude=midpoint_lat,
+            longitude=midpoint_lng,
+            timestamp=segment["start_time"],
+            vehicle_bearing=segment["bearing"],
+        )
+
+        segment["sunlight"] = sunlight
 
     return segments

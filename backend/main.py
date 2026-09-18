@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from services.routing import calculate_route
 
 from services.geocoding import search_locations
+from services.routing import calculate_route
 
 
 app = FastAPI(title="TruckView")
@@ -37,7 +37,9 @@ def health_check():
 
 
 @app.get("/api/locations/search")
-async def location_search(query: str = Query(min_length=2)):
+async def location_search(
+    query: str = Query(min_length=2),
+):
     try:
         return await search_locations(query)
     except Exception as error:
@@ -59,6 +61,7 @@ def plan_trip(trip: TripRequest):
             "destination_lng": trip.destination_lng,
         },
     }
+
 
 @app.post("/api/route")
 async def create_route(trip: TripRequest):

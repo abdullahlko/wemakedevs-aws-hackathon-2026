@@ -2,14 +2,18 @@ import os
 
 import httpx
 from dotenv import load_dotenv
+
 from services.route_segments import (
     create_route_segments,
     add_segment_timing,
+    add_segment_sunlight,
 )
 
 load_dotenv()
 
-TOMTOM_ROUTING_URL = "https://api.tomtom.com/routing/1/calculateRoute"
+TOMTOM_ROUTING_URL = (
+    "https://api.tomtom.com/routing/1/calculateRoute"
+)
 
 
 async def calculate_route(
@@ -22,7 +26,9 @@ async def calculate_route(
     api_key = os.getenv("TOMTOM_API_KEY")
 
     if not api_key:
-        raise RuntimeError("TOMTOM_API_KEY is not configured")
+        raise RuntimeError(
+            "TOMTOM_API_KEY is not configured"
+        )
 
     locations = (
         f"{origin_lat},{origin_lng}:"
@@ -40,7 +46,10 @@ async def calculate_route(
     url = f"{TOMTOM_ROUTING_URL}/{locations}/json"
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(url, params=params)
+        response = await client.get(
+            url,
+            params=params,
+        )
 
     if not response.is_success:
         raise RuntimeError(
@@ -70,21 +79,26 @@ async def calculate_route(
 
     segments = create_route_segments(coordinates)
 
-    segments = add_segment_timing(
+    add_segment_timing(
         segments=segments,
         departure_time=departure_time,
         total_duration_minutes=total_duration_minutes,
     )
 
+    add_segment_sunlight(segments)
+
     return {
         "distance_km": round(
-            summary["lengthInMeters"] / 1000, 2
+            summary["lengthInMeters"] / 1000,
+            2,
         ),
-        "duration_minutes": round(
-            summary["travelTimeInSeconds"] / 60
-        ),
+        "duration_minutes": total_duration_minutes,
         "traffic_delay_minutes": round(
-            summary.get("trafficDelayInSeconds", 0) / 60
+            summary.get(
+                "trafficDelayInSeconds",
+                0,
+            )
+            / 60
         ),
         "coordinates": coordinates,
         "segments": segments,
