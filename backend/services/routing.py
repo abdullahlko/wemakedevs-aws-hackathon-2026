@@ -2,7 +2,10 @@ import os
 
 import httpx
 from dotenv import load_dotenv
-from services.route_segments import create_route_segments
+from services.route_segments import (
+    create_route_segments,
+    add_segment_timing,
+)
 
 load_dotenv()
 
@@ -14,6 +17,7 @@ async def calculate_route(
     origin_lng: float,
     destination_lat: float,
     destination_lng: float,
+    departure_time: str,
 ):
     api_key = os.getenv("TOMTOM_API_KEY")
 
@@ -60,7 +64,17 @@ async def calculate_route(
                 ]
             )
 
+    total_duration_minutes = round(
+        summary["travelTimeInSeconds"] / 60
+    )
+
     segments = create_route_segments(coordinates)
+
+    segments = add_segment_timing(
+        segments=segments,
+        departure_time=departure_time,
+        total_duration_minutes=total_duration_minutes,
+    )
 
     return {
         "distance_km": round(

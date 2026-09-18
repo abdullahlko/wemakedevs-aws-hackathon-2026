@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from math import atan2, cos, radians, sin, sqrt
 
 
@@ -112,6 +113,52 @@ def create_route_segments(
                     1,
                 ),
             }
+        )
+
+    return segments
+
+
+def add_segment_timing(
+    segments: list[dict],
+    departure_time: str,
+    total_duration_minutes: int,
+):
+    if not segments:
+        return segments
+
+    departure = datetime.fromisoformat(departure_time)
+
+    total_distance = sum(
+        segment["distance_km"]
+        for segment in segments
+    )
+
+    if total_distance <= 0:
+        return segments
+
+    elapsed_minutes = 0.0
+
+    for segment in segments:
+        segment_duration = (
+            segment["distance_km"]
+            / total_distance
+            * total_duration_minutes
+        )
+
+        segment_start = departure + timedelta(
+            minutes=elapsed_minutes
+        )
+
+        elapsed_minutes += segment_duration
+
+        segment_end = departure + timedelta(
+            minutes=elapsed_minutes
+        )
+
+        segment["start_time"] = segment_start.isoformat()
+        segment["end_time"] = segment_end.isoformat()
+        segment["duration_minutes"] = round(
+            segment_duration
         )
 
     return segments

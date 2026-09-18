@@ -68,6 +68,7 @@ async def create_route(trip: TripRequest):
             origin_lng=trip.from_lng,
             destination_lat=trip.destination_lat,
             destination_lng=trip.destination_lng,
+            departure_time=trip.departure_time,
         )
 
         return {
