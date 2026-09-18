@@ -1,4 +1,11 @@
 import { useState } from "react"
+import LocationInput from "./components/LocationInput"
+
+type Location = {
+  name: string
+  lat: number
+  lng: number
+}
 
 type TripResponse = {
   message: string
@@ -6,6 +13,10 @@ type TripResponse = {
     from: string
     destination: string
     departure_time: string
+    from_lat: number
+    from_lng: number
+    destination_lat: number
+    destination_lng: number
   }
 }
 
@@ -13,13 +24,20 @@ function App() {
   const [from, setFrom] = useState("")
   const [destination, setDestination] = useState("")
   const [departureTime, setDepartureTime] = useState("")
+
+  const [fromLocation, setFromLocation] = useState<Location | null>(null)
+  const [destinationLocation, setDestinationLocation] =
+    useState<Location | null>(null)
+
   const [planning, setPlanning] = useState(false)
   const [tripResult, setTripResult] = useState<TripResponse | null>(null)
   const [error, setError] = useState("")
 
   const handlePlanTrip = async () => {
-    if (!from || !destination || !departureTime) {
-      setError("Please enter the starting location, destination and departure time.")
+    if (!fromLocation || !destinationLocation || !departureTime) {
+      setError(
+        "Please select a starting location, destination and departure time.",
+      )
       return
     }
 
@@ -34,9 +52,13 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from_location: from,
-          destination,
+          from_location: fromLocation.name,
+          destination: destinationLocation.name,
           departure_time: departureTime,
+          from_lat: fromLocation.lat,
+          from_lng: fromLocation.lng,
+          destination_lat: destinationLocation.lat,
+          destination_lng: destinationLocation.lng,
         }),
       })
 
@@ -59,6 +81,7 @@ function App() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">TruckView</h1>
+
             <p className="text-sm text-slate-500">
               Smart Route Optimization for Commercial Trucks
             </p>
@@ -83,33 +106,27 @@ function App() {
           </div>
 
           <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                From
-              </label>
+            <LocationInput
+              label="From"
+              placeholder="Search starting location"
+              value={from}
+              onChange={(value) => {
+                setFrom(value)
+                setFromLocation(null)
+              }}
+              onSelect={setFromLocation}
+            />
 
-              <input
-                type="text"
-                value={from}
-                onChange={(event) => setFrom(event.target.value)}
-                placeholder="Search starting location"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Destination
-              </label>
-
-              <input
-                type="text"
-                value={destination}
-                onChange={(event) => setDestination(event.target.value)}
-                placeholder="Search destination"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
-              />
-            </div>
+            <LocationInput
+              label="Destination"
+              placeholder="Search destination"
+              value={destination}
+              onChange={(value) => {
+                setDestination(value)
+                setDestinationLocation(null)
+              }}
+              onSelect={setDestinationLocation}
+            />
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -165,6 +182,24 @@ function App() {
                   </span>{" "}
                   {tripResult.trip.departure_time}
                 </p>
+
+                <div className="mt-3 border-t border-slate-200 pt-3">
+                  <p>
+                    <span className="font-medium text-slate-800">
+                      From coordinates:
+                    </span>{" "}
+                    {tripResult.trip.from_lat.toFixed(4)},{" "}
+                    {tripResult.trip.from_lng.toFixed(4)}
+                  </p>
+
+                  <p>
+                    <span className="font-medium text-slate-800">
+                      Destination coordinates:
+                    </span>{" "}
+                    {tripResult.trip.destination_lat.toFixed(4)},{" "}
+                    {tripResult.trip.destination_lng.toFixed(4)}
+                  </p>
+                </div>
               </div>
             </div>
           )}
