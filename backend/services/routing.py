@@ -2,6 +2,7 @@ import os
 
 import httpx
 from dotenv import load_dotenv
+from services.route_segments import create_route_segments
 
 load_dotenv()
 
@@ -59,6 +60,8 @@ async def calculate_route(
                 ]
             )
 
+    segments = create_route_segments(coordinates)
+
     return {
         "distance_km": round(
             summary["lengthInMeters"] / 1000, 2
@@ -70,4 +73,5 @@ async def calculate_route(
             summary.get("trafficDelayInSeconds", 0) / 60
         ),
         "coordinates": coordinates,
+        "segments": segments,
     }
