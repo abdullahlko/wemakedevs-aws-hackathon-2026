@@ -1,5 +1,6 @@
 import { useState } from "react"
 import LocationInput from "./components/LocationInput"
+import RouteMap from "./components/RouteMap"
 
 type Location = {
   name: string
@@ -80,7 +81,9 @@ function App() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">TruckView</h1>
+            <h1 className="text-2xl font-bold text-slate-900">
+              TruckView
+            </h1>
 
             <p className="text-sm text-slate-500">
               Smart Route Optimization for Commercial Trucks
@@ -114,7 +117,9 @@ function App() {
                 setFrom(value)
                 setFromLocation(null)
               }}
-              onSelect={setFromLocation}
+              onSelect={(location) => {
+                setFromLocation(location)
+              }}
             />
 
             <LocationInput
@@ -125,7 +130,9 @@ function App() {
                 setDestination(value)
                 setDestinationLocation(null)
               }}
-              onSelect={setDestinationLocation}
+              onSelect={(location) => {
+                setDestinationLocation(location)
+              }}
             />
 
             <div>
@@ -165,7 +172,9 @@ function App() {
 
               <div className="mt-3 space-y-2 text-sm text-slate-600">
                 <p>
-                  <span className="font-medium text-slate-800">From:</span>{" "}
+                  <span className="font-medium text-slate-800">
+                    From:
+                  </span>{" "}
                   {tripResult.trip.from}
                 </p>
 
@@ -210,27 +219,17 @@ function App() {
             </p>
 
             <p className="mt-1 text-sm leading-6 text-blue-700">
-              Route conditions, weather, daylight, accident risk and suitable
-              rest points.
+              Route conditions, weather, daylight, accident risk and
+              suitable rest points.
             </p>
           </div>
         </section>
 
-        <section className="flex min-h-[620px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-200">
-          <div className="text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
-              <span className="text-2xl">🗺️</span>
-            </div>
-
-            <h2 className="text-lg font-semibold text-slate-800">
-              Your route will appear here
-            </h2>
-
-            <p className="mt-2 max-w-sm text-sm text-slate-500">
-              Enter your starting location and destination to generate a trip
-              route.
-            </p>
-          </div>
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-200">
+          <RouteMap
+            fromLocation={fromLocation}
+            destinationLocation={destinationLocation}
+          />
         </section>
       </main>
     </div>
