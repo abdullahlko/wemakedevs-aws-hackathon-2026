@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from services.routing import calculate_route
 
 from services.geocoding import search_locations
 
@@ -58,3 +59,33 @@ def plan_trip(trip: TripRequest):
             "destination_lng": trip.destination_lng,
         },
     }
+
+@app.post("/api/route")
+async def create_route(trip: TripRequest):
+    try:
+        route = await calculate_route(
+            origin_lat=trip.from_lat,
+            origin_lng=trip.from_lng,
+            destination_lat=trip.destination_lat,
+            destination_lng=trip.destination_lng,
+        )
+
+        return {
+            "origin": {
+                "name": trip.from_location,
+                "lat": trip.from_lat,
+                "lng": trip.from_lng,
+            },
+            "destination": {
+                "name": trip.destination,
+                "lat": trip.destination_lat,
+                "lng": trip.destination_lng,
+            },
+            "route": route,
+        }
+
+    except Exception as error:
+        print(f"Route calculation error: {error}")
+        return {
+            "error": str(error)
+        }
