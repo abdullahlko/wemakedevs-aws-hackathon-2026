@@ -1,21 +1,56 @@
 import { useState } from "react"
 
+type TripResponse = {
+  message: string
+  trip: {
+    from: string
+    destination: string
+    departure_time: string
+  }
+}
+
 function App() {
   const [from, setFrom] = useState("")
   const [destination, setDestination] = useState("")
   const [departureTime, setDepartureTime] = useState("")
   const [planning, setPlanning] = useState(false)
+  const [tripResult, setTripResult] = useState<TripResponse | null>(null)
+  const [error, setError] = useState("")
 
-  const handlePlanTrip = () => {
+  const handlePlanTrip = async () => {
     if (!from || !destination || !departureTime) {
+      setError("Please enter the starting location, destination and departure time.")
       return
     }
 
     setPlanning(true)
+    setError("")
+    setTripResult(null)
 
-    setTimeout(() => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/trip/plan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from_location: from,
+          destination,
+          departure_time: departureTime,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Unable to plan the trip.")
+      }
+
+      const data: TripResponse = await response.json()
+      setTripResult(data)
+    } catch {
+      setError("Could not connect to the TruckView backend.")
+    } finally {
       setPlanning(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -98,6 +133,41 @@ function App() {
               {planning ? "Planning trip..." : "Plan Trip"}
             </button>
           </div>
+
+          {error && (
+            <div className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          {tripResult && (
+            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-900">
+                Trip received
+              </p>
+
+              <div className="mt-3 space-y-2 text-sm text-slate-600">
+                <p>
+                  <span className="font-medium text-slate-800">From:</span>{" "}
+                  {tripResult.trip.from}
+                </p>
+
+                <p>
+                  <span className="font-medium text-slate-800">
+                    Destination:
+                  </span>{" "}
+                  {tripResult.trip.destination}
+                </p>
+
+                <p>
+                  <span className="font-medium text-slate-800">
+                    Departure:
+                  </span>{" "}
+                  {tripResult.trip.departure_time}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 rounded-xl bg-blue-50 p-4">
             <p className="text-sm font-medium text-blue-900">
