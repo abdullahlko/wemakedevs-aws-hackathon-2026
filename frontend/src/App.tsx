@@ -21,6 +21,13 @@ type TripResponse = {
   }
 }
 
+type RouteData = {
+  distance_km: number
+  duration_minutes: number
+  traffic_delay_minutes: number
+  coordinates: [number, number][]
+}
+
 function App() {
   const [from, setFrom] = useState("")
   const [destination, setDestination] = useState("")
@@ -32,6 +39,7 @@ function App() {
 
   const [planning, setPlanning] = useState(false)
   const [tripResult, setTripResult] = useState<TripResponse | null>(null)
+  const [route, setRoute] = useState<RouteData | null>(null)
   const [error, setError] = useState("")
 
   const handlePlanTrip = async () => {
@@ -45,23 +53,27 @@ function App() {
     setPlanning(true)
     setError("")
     setTripResult(null)
+    setRoute(null)
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/trip/plan", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/trip/plan",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from_location: fromLocation.name,
+            destination: destinationLocation.name,
+            departure_time: departureTime,
+            from_lat: fromLocation.lat,
+            from_lng: fromLocation.lng,
+            destination_lat: destinationLocation.lat,
+            destination_lng: destinationLocation.lng,
+          }),
         },
-        body: JSON.stringify({
-          from_location: fromLocation.name,
-          destination: destinationLocation.name,
-          departure_time: departureTime,
-          from_lat: fromLocation.lat,
-          from_lng: fromLocation.lng,
-          destination_lat: destinationLocation.lat,
-          destination_lng: destinationLocation.lng,
-        }),
-      })
+      )
 
       if (!response.ok) {
         throw new Error("Unable to plan the trip.")
@@ -69,8 +81,45 @@ function App() {
 
       const data: TripResponse = await response.json()
       setTripResult(data)
-    } catch {
-      setError("Could not connect to the TruckView backend.")
+
+      const routeResponse = await fetch(
+        "http://127.0.0.1:8000/api/route",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from_location: fromLocation.name,
+            destination: destinationLocation.name,
+            departure_time: departureTime,
+            from_lat: fromLocation.lat,
+            from_lng: fromLocation.lng,
+            destination_lat: destinationLocation.lat,
+            destination_lng: destinationLocation.lng,
+          }),
+        },
+      )
+
+      if (!routeResponse.ok) {
+        throw new Error("Unable to calculate route.")
+      }
+
+      const routeData = await routeResponse.json()
+
+      if (routeData.error) {
+        throw new Error(routeData.error)
+      }
+
+      setRoute(routeData.route)
+    } catch (error) {
+      console.error("Trip planning failed:", error)
+
+      if (error instanceof Error && error.message) {
+        setError(error.message)
+      } else {
+        setError("Could not connect to the TruckView backend.")
+      }
     } finally {
       setPlanning(false)
     }
@@ -143,7 +192,9 @@ function App() {
               <input
                 type="datetime-local"
                 value={departureTime}
-                onChange={(event) => setDepartureTime(event.target.value)}
+                onChange={(event) =>
+                  setDepartureTime(event.target.value)
+                }
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
               />
             </div>
@@ -213,6 +264,46 @@ function App() {
             </div>
           )}
 
+          {route && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-semibold text-slate-900">
+                Route summary
+              </p>
+
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">
+                    Distance
+                  </p>
+
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {route.distance_km} km
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">
+                    Duration
+                  </p>
+
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {route.duration_minutes} min
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500">
+                    Traffic delay
+                  </p>
+
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {route.traffic_delay_minutes} min
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 rounded-xl bg-blue-50 p-4">
             <p className="text-sm font-medium text-blue-900">
               What TruckView checks
@@ -229,6 +320,7 @@ function App() {
           <RouteMap
             fromLocation={fromLocation}
             destinationLocation={destinationLocation}
+            route={route}
           />
         </section>
       </main>
