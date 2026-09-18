@@ -9,7 +9,14 @@ from services.route_segments import (
     add_segment_sunlight,
 )
 
+from services.risk_engine import (
+    add_segment_risk,
+    calculate_overall_risk,
+)
+
+
 load_dotenv()
+
 
 TOMTOM_ROUTING_URL = (
     "https://api.tomtom.com/routing/1/calculateRoute"
@@ -77,7 +84,9 @@ async def calculate_route(
         summary["travelTimeInSeconds"] / 60
     )
 
-    segments = create_route_segments(coordinates)
+    segments = create_route_segments(
+        coordinates
+    )
 
     add_segment_timing(
         segments=segments,
@@ -86,6 +95,12 @@ async def calculate_route(
     )
 
     add_segment_sunlight(segments)
+
+    add_segment_risk(segments)
+
+    overall_risk = calculate_overall_risk(
+        segments
+    )
 
     return {
         "distance_km": round(
@@ -102,4 +117,5 @@ async def calculate_route(
         ),
         "coordinates": coordinates,
         "segments": segments,
+        "overall_risk": overall_risk,
     }
