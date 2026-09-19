@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react"
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://127.0.0.1:8000"
+
 type Location = {
   name: string
   lat: number
@@ -24,7 +28,8 @@ function LocationInput({
   const [results, setResults] = useState<Location[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState(false)
-  const [selectedLocation, setSelectedLocation] = useState(false)
+  const [selectedLocation, setSelectedLocation] =
+    useState(false)
 
   useEffect(() => {
     if (selectedLocation) {
@@ -44,7 +49,9 @@ function LocationInput({
         setSearchError(false)
 
         const response = await fetch(
-          `http://127.0.0.1:8000/api/locations/search?query=${encodeURIComponent(value)}`,
+          `${API_BASE_URL}/api/locations/search?query=${encodeURIComponent(
+            value,
+          )}`,
         )
 
         if (!response.ok) {
@@ -55,7 +62,10 @@ function LocationInput({
 
         setResults(data)
       } catch (error) {
-        console.error("Location search failed:", error)
+        console.error(
+          "Location search failed:",
+          error,
+        )
         setResults([])
         setSearchError(true)
       } finally {
@@ -90,12 +100,16 @@ function LocationInput({
       <input
         type="text"
         value={value}
-        onChange={(event) => handleInputChange(event.target.value)}
+        onChange={(event) =>
+          handleInputChange(event.target.value)
+        }
         placeholder={placeholder}
         className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
       />
 
-      {(searching || searchError || results.length > 0) && (
+      {(searching ||
+        searchError ||
+        results.length > 0) && (
         <div className="absolute left-0 right-0 top-full z-10 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           {searching && (
             <div className="px-4 py-3 text-sm text-slate-500">

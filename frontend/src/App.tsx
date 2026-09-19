@@ -2,6 +2,10 @@ import { useState } from "react"
 import LocationInput from "./components/LocationInput"
 import RouteMap from "./components/RouteMap"
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://127.0.0.1:8000"
+
 type Location = {
   name: string
   lat: number
@@ -33,17 +37,24 @@ function App() {
   const [destination, setDestination] = useState("")
   const [departureTime, setDepartureTime] = useState("")
 
-  const [fromLocation, setFromLocation] = useState<Location | null>(null)
+  const [fromLocation, setFromLocation] =
+    useState<Location | null>(null)
   const [destinationLocation, setDestinationLocation] =
     useState<Location | null>(null)
 
   const [planning, setPlanning] = useState(false)
-  const [tripResult, setTripResult] = useState<TripResponse | null>(null)
-  const [route, setRoute] = useState<RouteData | null>(null)
+  const [tripResult, setTripResult] =
+    useState<TripResponse | null>(null)
+  const [route, setRoute] =
+    useState<RouteData | null>(null)
   const [error, setError] = useState("")
 
   const handlePlanTrip = async () => {
-    if (!fromLocation || !destinationLocation || !departureTime) {
+    if (
+      !fromLocation ||
+      !destinationLocation ||
+      !departureTime
+    ) {
       setError(
         "Please select a starting location, destination and departure time.",
       )
@@ -55,23 +66,25 @@ function App() {
     setTripResult(null)
     setRoute(null)
 
+    const tripPayload = {
+      from_location: fromLocation.name,
+      destination: destinationLocation.name,
+      departure_time: departureTime,
+      from_lat: fromLocation.lat,
+      from_lng: fromLocation.lng,
+      destination_lat: destinationLocation.lat,
+      destination_lng: destinationLocation.lng,
+    }
+
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/trip/plan",
+        `${API_BASE_URL}/api/trip/plan`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            from_location: fromLocation.name,
-            destination: destinationLocation.name,
-            departure_time: departureTime,
-            from_lat: fromLocation.lat,
-            from_lng: fromLocation.lng,
-            destination_lat: destinationLocation.lat,
-            destination_lng: destinationLocation.lng,
-          }),
+          body: JSON.stringify(tripPayload),
         },
       )
 
@@ -83,21 +96,13 @@ function App() {
       setTripResult(data)
 
       const routeResponse = await fetch(
-        "http://127.0.0.1:8000/api/route",
+        `${API_BASE_URL}/api/route`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            from_location: fromLocation.name,
-            destination: destinationLocation.name,
-            departure_time: departureTime,
-            from_lat: fromLocation.lat,
-            from_lng: fromLocation.lng,
-            destination_lat: destinationLocation.lat,
-            destination_lng: destinationLocation.lng,
-          }),
+          body: JSON.stringify(tripPayload),
         },
       )
 
@@ -115,10 +120,15 @@ function App() {
     } catch (error) {
       console.error("Trip planning failed:", error)
 
-      if (error instanceof Error && error.message) {
+      if (
+        error instanceof Error &&
+        error.message
+      ) {
         setError(error.message)
       } else {
-        setError("Could not connect to the TruckView backend.")
+        setError(
+          "Could not connect to the TruckView backend.",
+        )
       }
     } finally {
       setPlanning(false)
@@ -205,7 +215,9 @@ function App() {
               disabled={planning}
               className="w-full rounded-xl bg-slate-900 px-4 py-3 font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {planning ? "Planning trip..." : "Plan Trip"}
+              {planning
+                ? "Planning trip..."
+                : "Plan Trip"}
             </button>
           </div>
 
@@ -256,8 +268,13 @@ function App() {
                     <span className="font-medium text-slate-800">
                       Destination coordinates:
                     </span>{" "}
-                    {tripResult.trip.destination_lat.toFixed(4)},{" "}
-                    {tripResult.trip.destination_lng.toFixed(4)}
+                    {tripResult.trip.destination_lat.toFixed(
+                      4,
+                    )}
+                    ,{" "}
+                    {tripResult.trip.destination_lng.toFixed(
+                      4,
+                    )}
                   </p>
                 </div>
               </div>
@@ -310,8 +327,8 @@ function App() {
             </p>
 
             <p className="mt-1 text-sm leading-6 text-blue-700">
-              Route conditions, weather, daylight, accident risk and
-              suitable rest points.
+              Route conditions, weather, daylight, accident
+              risk and suitable rest points.
             </p>
           </div>
         </section>

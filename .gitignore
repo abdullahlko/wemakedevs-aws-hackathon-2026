@@ -21,3 +21,5 @@ test_accident_data.py
 backend/lambda_package/
 backend/*.zip
 backend/test_bedrock.py
+
+*.env.local
