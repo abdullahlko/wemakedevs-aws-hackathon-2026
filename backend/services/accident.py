@@ -109,15 +109,18 @@ def find_nearby_accidents(
     if candidates.empty:
         return candidates
 
-    candidates["distance_km"] = candidates.apply(
-        lambda row: haversine_distance_km(
-            latitude,
-            longitude,
-            row["latitude"],
-            row["longitude"],
-        ),
-        axis=1,
-    )
+    candidates["distance_km"] = (
+        (
+            candidates["latitude"] - latitude
+        ) ** 2
+        + (
+            (
+                candidates["longitude"]
+                - longitude
+            )
+            * longitude_scale
+        ) ** 2
+    ) ** 0.5 * 111.0
 
     candidates = candidates[
         candidates["distance_km"] <= radius_km
@@ -161,9 +164,21 @@ def calculate_accident_risk(
             / segment_length_km
         )
 
-    risk_score = min(
-        round(accident_density * 10),
-        100,
+    # Convert weighted accident density into
+    # a bounded 0-100 risk score.
+    #
+    # The dataset is prototype data and contains
+    # dense city-level clusters, so a logarithmic
+    # scale prevents those clusters from immediately
+    # forcing the score to 100.
+    risk_score = round(
+        min(
+            100,
+            18 * (
+                accident_density
+                ** 0.5
+            ),
+        )
     )
 
     severity_counts = (
@@ -184,3 +199,148 @@ def calculate_accident_risk(
             severity_counts.get("minor", 0)
         ),
     }
+
+
+def get_segment_accident_summary(
+    segment: dict,
+    accident_data: pd.DataFrame | None = None,
+    radius_km: float = 1.0,
+) -> dict:
+    if accident_data is None:
+        accident_data = load_accident_data()
+
+    coordinates = segment.get(
+        "coordinates",
+        [],
+    )
+
+    if not coordinates:
+        return calculate_accident_risk(
+            pd.DataFrame(),
+            segment.get("distance_km", 0),
+        )
+
+    latitudes = [
+        point[1]
+        for point in coordinates
+    ]
+
+    longitudes = [
+        point[0]
+        for point in coordinates
+    ]
+
+    min_lat = min(latitudes) - (
+        radius_km / 111.0
+    )
+
+    max_lat = max(latitudes) + (
+        radius_km / 111.0
+    )
+
+    center_lat = (
+        min_lat + max_lat
+    ) / 2
+
+    longitude_scale = max(
+        cos(radians(center_lat)),
+        0.1,
+    )
+
+    lng_delta = radius_km / (
+        111.0 * longitude_scale
+    )
+
+    min_lng = min(longitudes) - lng_delta
+    max_lng = max(longitudes) + lng_delta
+
+    candidates = accident_data[
+        accident_data["latitude"].between(
+            min_lat,
+            max_lat,
+        )
+        & accident_data["longitude"].between(
+            min_lng,
+            max_lng,
+        )
+    ].copy()
+
+    if candidates.empty:
+        return calculate_accident_risk(
+            pd.DataFrame(),
+            segment.get("distance_km", 0),
+        )
+
+    matched_indexes = set()
+
+    for point in coordinates:
+        longitude, latitude = point
+
+        local_candidates = candidates[
+            candidates["latitude"].between(
+                latitude - radius_km / 111.0,
+                latitude + radius_km / 111.0,
+            )
+        ].copy()
+
+        if local_candidates.empty:
+            continue
+
+        local_longitude_scale = max(
+            cos(radians(latitude)),
+            0.1,
+        )
+
+        local_lng_delta = radius_km / (
+            111.0 * local_longitude_scale
+        )
+
+        local_candidates = local_candidates[
+            local_candidates["longitude"].between(
+                longitude - local_lng_delta,
+                longitude + local_lng_delta,
+            )
+        ]
+
+        if local_candidates.empty:
+            continue
+
+        distances = (
+            (
+                local_candidates["latitude"]
+                - latitude
+            ) ** 2
+            + (
+                (
+                    local_candidates["longitude"]
+                    - longitude
+                )
+                * local_longitude_scale
+            ) ** 2
+        ) ** 0.5 * 111.0
+
+        matches = local_candidates[
+            distances <= radius_km
+        ]
+
+        matched_indexes.update(
+            matches.index.tolist()
+        )
+
+    if not matched_indexes:
+        return calculate_accident_risk(
+            pd.DataFrame(),
+            segment.get("distance_km", 0),
+        )
+
+    accidents = accident_data.loc[
+        list(matched_indexes)
+    ].copy()
+
+    return calculate_accident_risk(
+        accidents=accidents,
+        segment_length_km=segment.get(
+            "distance_km",
+            0,
+        ),
+    )

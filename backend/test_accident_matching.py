@@ -1,135 +1,9 @@
 import asyncio
-from math import cos, radians, sqrt
-from pathlib import Path
-
-import pandas as pd
 
 from services.routing import calculate_route
 
 
-DATA_PATH = (
-    Path(__file__).resolve().parent.parent
-    / "data"
-    / "raw"
-    / "sehaj1104_accidents"
-    / "indian_roads_dataset.csv"
-)
-
-
-def prepare_route(route_coordinates):
-    """
-    Convert TomTom [lng, lat] coordinates into
-    a dataframe-friendly structure.
-    """
-    return [
-        (point[1], point[0])
-        for point in route_coordinates
-    ]
-
-
-def find_nearby_accidents(
-    route_coordinates,
-    accidents,
-    radius_km,
-):
-    """
-    Find accident records near the route.
-
-    Uses a simple bounding-box pre-filter before
-    calculating the more precise approximate distance.
-    """
-
-    route_lats = [
-        point[0]
-        for point in route_coordinates
-    ]
-
-    route_lngs = [
-        point[1]
-        for point in route_coordinates
-    ]
-
-    min_lat = min(route_lats)
-    max_lat = max(route_lats)
-    min_lng = min(route_lngs)
-    max_lng = max(route_lngs)
-
-    lat_padding = radius_km / 111.0
-
-    average_lat = (
-        min_lat + max_lat
-    ) / 2
-
-    lng_padding = radius_km / (
-        111.0
-        * cos(radians(average_lat))
-    )
-
-    candidates = accidents[
-        (accidents["latitude"] >= min_lat - lat_padding)
-        & (accidents["latitude"] <= max_lat + lat_padding)
-        & (accidents["longitude"] >= min_lng - lng_padding)
-        & (accidents["longitude"] <= max_lng + lng_padding)
-    ]
-
-    matches = []
-
-    for _, accident in candidates.iterrows():
-        accident_lat = accident["latitude"]
-        accident_lng = accident["longitude"]
-
-        minimum_distance = float("inf")
-
-        for route_lat, route_lng in route_coordinates:
-            lat_distance = (
-                accident_lat - route_lat
-            ) * 111.0
-
-            lng_distance = (
-                accident_lng - route_lng
-            ) * 111.0 * cos(
-                radians(
-                    (
-                        accident_lat
-                        + route_lat
-                    ) / 2
-                )
-            )
-
-            distance = sqrt(
-                lat_distance**2
-                + lng_distance**2
-            )
-
-            minimum_distance = min(
-                minimum_distance,
-                distance,
-            )
-
-        if minimum_distance <= radius_km:
-            matches.append(
-                {
-                    "city": accident["city"],
-                    "state": accident["state"],
-                    "latitude": accident_lat,
-                    "longitude": accident_lng,
-                    "severity": accident[
-                        "accident_severity"
-                    ],
-                    "date": accident["date"],
-                    "distance_km": round(
-                        minimum_distance,
-                        2,
-                    ),
-                }
-            )
-
-    return matches
-
-
 async def main():
-    accidents = pd.read_csv(DATA_PATH)
-
     print("Calculating Delhi → Chandigarh route...")
 
     route = await calculate_route(
@@ -137,11 +11,7 @@ async def main():
         origin_lng=77.2090,
         destination_lat=30.7333,
         destination_lng=76.7794,
-        departure_time="2026-09-18T08:00:00",
-    )
-
-    route_coordinates = prepare_route(
-        route["coordinates"]
+        departure_time="2026-09-18T08:00:00+05:30",
     )
 
     print(
@@ -150,57 +20,115 @@ async def main():
     )
 
     print(
-        f"Route points: "
-        f"{len(route_coordinates)}"
+        f"Route duration: "
+        f"{route['duration_minutes']} minutes"
     )
 
-    print("\n=== RADIUS COMPARISON ===")
+    print(
+        f"Route points: "
+        f"{len(route['coordinates'])}"
+    )
 
-    for radius in [5.0, 2.0, 1.0, 0.5]:
-        matches = find_nearby_accidents(
-            route_coordinates,
-            accidents,
-            radius,
+    print(
+        f"Route segments: "
+        f"{len(route['segments'])}"
+    )
+
+    print("\n=== SEGMENT ACCIDENT RISK ===")
+
+    for segment in route["segments"]:
+        accident = segment.get(
+            "accident",
+            {},
         )
 
         print(
-            f"{radius:>4} km → "
-            f"{len(matches)} accidents"
+            f"\nSegment {segment['segment_id']}"
         )
 
-    print("\n=== 1 KM MATCH DETAILS ===")
+        print(
+            f"  Distance: "
+            f"{segment['distance_km']} km"
+        )
 
-    matches = find_nearby_accidents(
-        route_coordinates,
-        accidents,
-        1.0,
+        print(
+            f"  Time: "
+            f"{segment.get('start_time', 'Unknown')} "
+            f"→ "
+            f"{segment.get('end_time', 'Unknown')}"
+        )
+
+        print(
+            f"  Accident risk: "
+            f"{accident.get('risk_score', 0)}"
+        )
+
+        print(
+            f"  Accident count: "
+            f"{accident.get('accident_count', 0)}"
+        )
+
+        print(
+            f"  Fatal: "
+            f"{accident.get('fatal_count', 0)}"
+        )
+
+        print(
+            f"  Major: "
+            f"{accident.get('major_count', 0)}"
+        )
+
+        print(
+            f"  Minor: "
+            f"{accident.get('minor_count', 0)}"
+        )
+
+        print(
+            f"  Sun glare risk: "
+            f"{segment.get('factors', {}).get('sun_glare', 0)}"
+        )
+
+        print(
+            f"  Night risk: "
+            f"{segment.get('factors', {}).get('night', 0)}"
+        )
+
+        print(
+            f"  Overall segment risk: "
+            f"{segment.get('risk_score', 0)} "
+            f"({segment.get('risk_level', 'Unknown')})"
+        )
+
+    print("\n=== OVERALL ROUTE RISK ===")
+
+    overall = route.get(
+        "overall_risk",
+        {},
     )
 
-    if not matches:
-        print("No accidents found.")
-        return
-
-    matched_df = pd.DataFrame(matches)
-
     print(
-        matched_df[
-            [
-                "city",
-                "severity",
-                "date",
-                "distance_km",
-            ]
-        ]
-        .sort_values("distance_km")
-        .head(20)
-        .to_string(index=False)
+        f"Risk score: "
+        f"{overall.get('risk_score', 0)}"
     )
 
-    print("\n=== 1 KM SEVERITY BREAKDOWN ===")
+    print(
+        f"Risk level: "
+        f"{overall.get('risk_level', 'Unknown')}"
+    )
 
     print(
-        matched_df["severity"]
-        .value_counts()
+        f"Accident factor: "
+        f"{overall.get('factors', {}).get('accident', 0)}"
+    )
+
+    print(
+        f"Sun glare factor: "
+        f"{overall.get('factors', {}).get('sun_glare', 0)}"
+    )
+
+    print(
+        f"Night factor: "
+        f"{overall.get('factors', {}).get('night', 0)}"
     )
 
 

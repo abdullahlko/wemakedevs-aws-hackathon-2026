@@ -1,3 +1,9 @@
+from services.accident import (
+    get_segment_accident_summary,
+    load_accident_data,
+)
+
+
 def get_risk_level(score: float) -> str:
     if score < 20:
         return "Very Low"
@@ -37,30 +43,40 @@ def calculate_sun_risk(sunlight: dict) -> dict:
     }
 
 
-def calculate_segment_risk(segment: dict) -> dict:
-    sunlight = segment.get("sunlight", {})
+def calculate_segment_risk(
+    segment: dict,
+) -> dict:
+    sunlight = segment.get(
+        "sunlight",
+        {},
+    )
 
-    sun_risk = calculate_sun_risk(sunlight)
+    sun_risk = calculate_sun_risk(
+        sunlight
+    )
 
-    accident_risk = 0
     weather_risk = 0
     road_risk = 0
 
     total_score = (
-        accident_risk
-        + weather_risk
+        weather_risk
         + sun_risk["sun_glare"]
         + sun_risk["night"]
         + road_risk
     )
 
-    total_score = min(total_score, 100)
+    total_score = min(
+        total_score,
+        100,
+    )
 
     return {
         "risk_score": round(total_score),
-        "risk_level": get_risk_level(total_score),
+        "risk_level": get_risk_level(
+            total_score
+        ),
         "factors": {
-            "accident": accident_risk,
+            "accident": 0,
             "weather": weather_risk,
             "sun_glare": sun_risk["sun_glare"],
             "night": sun_risk["night"],
@@ -69,16 +85,51 @@ def calculate_segment_risk(segment: dict) -> dict:
     }
 
 
-def add_segment_risk(segments: list[dict]) -> list[dict]:
+def add_segment_risk(
+    segments: list[dict],
+    weather_by_segment: dict | None = None,
+) -> list[dict]:
+    weather_by_segment = (
+        weather_by_segment or {}
+    )
+
+    accident_data = load_accident_data()
+
     for segment in segments:
-        risk = calculate_segment_risk(segment)
+        accident = get_segment_accident_summary(
+            segment=segment,
+            accident_data=accident_data,
+            radius_km=1.0,
+        )
+
+        risk = calculate_segment_risk(
+            segment
+        )
+
+        risk["factors"]["accident"] = (
+            accident["risk_score"]
+        )
+
+        risk["risk_score"] = min(
+            risk["risk_score"]
+            + accident["risk_score"],
+            100,
+        )
+
+        risk["risk_level"] = get_risk_level(
+            risk["risk_score"]
+        )
 
         segment.update(risk)
+
+        segment["accident"] = accident
 
     return segments
 
 
-def calculate_overall_risk(segments: list[dict]) -> dict:
+def calculate_overall_risk(
+    segments: list[dict],
+) -> dict:
     if not segments:
         return {
             "risk_score": 0,
@@ -118,6 +169,8 @@ def calculate_overall_risk(segments: list[dict]) -> dict:
 
     return {
         "risk_score": overall_score,
-        "risk_level": get_risk_level(overall_score),
+        "risk_level": get_risk_level(
+            overall_score
+        ),
         "factors": factors,
     }
