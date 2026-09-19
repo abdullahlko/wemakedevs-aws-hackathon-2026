@@ -16,3 +16,8 @@ __pycache__/
 data/raw/
 indian_roads_dataset.csv
 test_accident_data.py
+
+# AWS Lambda deployment artifacts
+backend/lambda_package/
+backend/*.zip
+backend/test_bedrock.py
