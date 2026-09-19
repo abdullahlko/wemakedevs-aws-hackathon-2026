@@ -1,8 +1,12 @@
 from datetime import datetime
 from math import radians
+from zoneinfo import ZoneInfo
 
 from astral import Observer
 from astral.sun import azimuth, elevation
+
+
+INDIA_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
 
 def calculate_sunlight(
@@ -13,13 +17,29 @@ def calculate_sunlight(
 ):
     time = datetime.fromisoformat(timestamp)
 
+    if time.tzinfo is None:
+        time = time.replace(
+            tzinfo=INDIA_TIMEZONE
+        )
+    else:
+        time = time.astimezone(
+            INDIA_TIMEZONE
+        )
+
     observer = Observer(
         latitude=latitude,
         longitude=longitude,
     )
 
-    sun_altitude = elevation(observer, time)
-    sun_azimuth = azimuth(observer, time)
+    sun_altitude = elevation(
+        observer,
+        time,
+    )
+
+    sun_azimuth = azimuth(
+        observer,
+        time,
+    )
 
     if sun_altitude <= -6:
         light_condition = "night"
@@ -29,7 +49,15 @@ def calculate_sunlight(
         light_condition = "daylight"
 
     angle_difference = abs(
-        ((sun_azimuth - vehicle_bearing + 180) % 360) - 180
+        (
+            (
+                sun_azimuth
+                - vehicle_bearing
+                + 180
+            )
+            % 360
+        )
+        - 180
     )
 
     glare_risk = 0
@@ -47,12 +75,24 @@ def calculate_sunlight(
         elif angle_difference <= 40:
             glare_risk += 15
 
-    glare_risk = min(glare_risk, 100)
+    glare_risk = min(
+        glare_risk,
+        100,
+    )
 
     return {
-        "sun_altitude": round(sun_altitude, 2),
-        "sun_azimuth": round(sun_azimuth, 2),
+        "sun_altitude": round(
+            sun_altitude,
+            2,
+        ),
+        "sun_azimuth": round(
+            sun_azimuth,
+            2,
+        ),
         "light_condition": light_condition,
-        "sun_angle_difference": round(angle_difference, 2),
+        "sun_angle_difference": round(
+            angle_difference,
+            2,
+        ),
         "glare_risk": glare_risk,
     }
