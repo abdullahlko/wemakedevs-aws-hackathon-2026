@@ -9,6 +9,8 @@ from services.route_segments import (
     add_segment_sunlight,
 )
 
+from services.weather import fetch_weather
+
 from services.risk_engine import (
     add_segment_risk,
     calculate_overall_risk,
@@ -50,9 +52,14 @@ async def calculate_route(
         "routeRepresentation": "polyline",
     }
 
-    url = f"{TOMTOM_ROUTING_URL}/{locations}/json"
+    url = (
+        f"{TOMTOM_ROUTING_URL}/"
+        f"{locations}/json"
+    )
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(
+        timeout=30.0
+    ) as client:
         response = await client.get(
             url,
             params=params,
@@ -60,7 +67,8 @@ async def calculate_route(
 
     if not response.is_success:
         raise RuntimeError(
-            f"TomTom API returned {response.status_code}: "
+            f"TomTom API returned "
+            f"{response.status_code}: "
             f"{response.text}"
         )
 
@@ -69,11 +77,11 @@ async def calculate_route(
     route = data["routes"][0]
     summary = route["summary"]
 
-    coordinates = []
+    route_coordinates = []
 
     for leg in route["legs"]:
         for point in leg["points"]:
-            coordinates.append(
+            route_coordinates.append(
                 [
                     point["longitude"],
                     point["latitude"],
@@ -81,22 +89,76 @@ async def calculate_route(
             )
 
     total_duration_minutes = round(
-        summary["travelTimeInSeconds"] / 60
+        summary["travelTimeInSeconds"]
+        / 60
     )
 
     segments = create_route_segments(
-        coordinates
+        route_coordinates
     )
 
     add_segment_timing(
         segments=segments,
         departure_time=departure_time,
-        total_duration_minutes=total_duration_minutes,
+        total_duration_minutes=(
+            total_duration_minutes
+        ),
     )
 
-    add_segment_sunlight(segments)
+    add_segment_sunlight(
+        segments
+    )
 
-    add_segment_risk(segments)
+    for segment in segments:
+        segment_coordinates = segment[
+            "coordinates"
+        ]
+
+        midpoint_index = (
+            len(segment_coordinates)
+            // 2
+        )
+
+        midpoint = segment_coordinates[
+            midpoint_index
+        ]
+
+        longitude = midpoint[0]
+        latitude = midpoint[1]
+
+        try:
+            weather = await fetch_weather(
+                latitude=latitude,
+                longitude=longitude,
+                timestamp=segment[
+                    "start_time"
+                ],
+            )
+
+        except Exception as error:
+            print(
+                "Weather lookup failed for "
+                f"segment {segment['segment_id']}: "
+                f"{error}"
+            )
+
+            weather = {
+                "temperature_c": None,
+                "precipitation_mm": None,
+                "visibility_m": None,
+                "wind_speed_kmh": None,
+                "weather_code": None,
+                "risk_score": 0,
+                "risk_level": "Unavailable",
+                "risk_factors": [],
+                "source": "Open-Meteo",
+            }
+
+        segment["weather"] = weather
+
+    add_segment_risk(
+        segments
+    )
 
     overall_risk = calculate_overall_risk(
         segments
@@ -104,10 +166,13 @@ async def calculate_route(
 
     return {
         "distance_km": round(
-            summary["lengthInMeters"] / 1000,
+            summary["lengthInMeters"]
+            / 1000,
             2,
         ),
-        "duration_minutes": total_duration_minutes,
+        "duration_minutes": (
+            total_duration_minutes
+        ),
         "traffic_delay_minutes": round(
             summary.get(
                 "trafficDelayInSeconds",
@@ -115,7 +180,7 @@ async def calculate_route(
             )
             / 60
         ),
-        "coordinates": coordinates,
+        "coordinates": route_coordinates,
         "segments": segments,
         "overall_risk": overall_risk,
     }

@@ -11,3 +11,8 @@ __pycache__/
 
 .vscode/
 .DS_Store
+
+# Local accident datasets
+data/raw/
+indian_roads_dataset.csv
+test_accident_data.py

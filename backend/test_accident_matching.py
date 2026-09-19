@@ -11,7 +11,7 @@ async def main():
         origin_lng=77.2090,
         destination_lat=30.7333,
         destination_lng=76.7794,
-        departure_time="2026-09-18T08:00:00+05:30",
+        departure_time="2026-09-20T08:00:00+05:30",
     )
 
     print(
@@ -34,11 +34,21 @@ async def main():
         f"{len(route['segments'])}"
     )
 
-    print("\n=== SEGMENT ACCIDENT RISK ===")
+    print("\n=== SEGMENT RISK ===")
 
     for segment in route["segments"]:
         accident = segment.get(
             "accident",
+            {},
+        )
+
+        weather = segment.get(
+            "weather",
+            {},
+        )
+
+        factors = segment.get(
+            "factors",
             {},
         )
 
@@ -59,42 +69,49 @@ async def main():
         )
 
         print(
-            f"  Accident risk: "
-            f"{accident.get('risk_score', 0)}"
+            f"  Accident: "
+            f"{accident.get('risk_score', 0)} "
+            f"({accident.get('accident_count', 0)} records)"
         )
 
         print(
-            f"  Accident count: "
-            f"{accident.get('accident_count', 0)}"
+            f"  Weather: "
+            f"{weather.get('risk_score', 0)} "
+            f"({weather.get('risk_level', 'Unavailable')})"
         )
 
         print(
-            f"  Fatal: "
-            f"{accident.get('fatal_count', 0)}"
+            f"  Temperature: "
+            f"{weather.get('temperature_c', 'N/A')} °C"
         )
 
         print(
-            f"  Major: "
-            f"{accident.get('major_count', 0)}"
+            f"  Precipitation: "
+            f"{weather.get('precipitation_mm', 'N/A')} mm"
         )
 
         print(
-            f"  Minor: "
-            f"{accident.get('minor_count', 0)}"
+            f"  Visibility: "
+            f"{weather.get('visibility_m', 'N/A')} m"
         )
 
         print(
-            f"  Sun glare risk: "
-            f"{segment.get('factors', {}).get('sun_glare', 0)}"
+            f"  Wind: "
+            f"{weather.get('wind_speed_kmh', 'N/A')} km/h"
         )
 
         print(
-            f"  Night risk: "
-            f"{segment.get('factors', {}).get('night', 0)}"
+            f"  Sun glare: "
+            f"{factors.get('sun_glare', 0)}"
         )
 
         print(
-            f"  Overall segment risk: "
+            f"  Night: "
+            f"{factors.get('night', 0)}"
+        )
+
+        print(
+            f"  Overall: "
             f"{segment.get('risk_score', 0)} "
             f"({segment.get('risk_level', 'Unknown')})"
         )
@@ -119,6 +136,11 @@ async def main():
     print(
         f"Accident factor: "
         f"{overall.get('factors', {}).get('accident', 0)}"
+    )
+
+    print(
+        f"Weather factor: "
+        f"{overall.get('factors', {}).get('weather', 0)}"
     )
 
     print(

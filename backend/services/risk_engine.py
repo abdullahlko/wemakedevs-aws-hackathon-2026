@@ -7,17 +7,22 @@ from services.accident import (
 def get_risk_level(score: float) -> str:
     if score < 20:
         return "Very Low"
+
     if score < 40:
         return "Low"
+
     if score < 60:
         return "Moderate"
+
     if score < 80:
         return "High"
 
     return "Very High"
 
 
-def calculate_sun_risk(sunlight: dict) -> dict:
+def calculate_sun_risk(
+    sunlight: dict,
+) -> dict:
     light_condition = sunlight.get(
         "light_condition",
         "daylight",
@@ -51,18 +56,45 @@ def calculate_segment_risk(
         {},
     )
 
+    weather = segment.get(
+        "weather",
+        {},
+    )
+
     sun_risk = calculate_sun_risk(
         sunlight
     )
 
-    weather_risk = 0
+    weather_risk = float(
+        weather.get(
+            "risk_score",
+            0,
+        )
+    )
+
+    accident_risk = float(
+        segment.get(
+            "accident",
+            {}
+        ).get(
+            "risk_score",
+            0,
+        )
+    )
+
     road_risk = 0
 
+    # Weighted combination.
+    #
+    # Accident history is the strongest historical
+    # signal while weather and sunlight provide
+    # current trip conditions.
     total_score = (
-        weather_risk
-        + sun_risk["sun_glare"]
-        + sun_risk["night"]
-        + road_risk
+        accident_risk * 0.50
+        + weather_risk * 0.25
+        + sun_risk["sun_glare"] * 0.15
+        + sun_risk["night"] * 0.10
+        + road_risk * 0.05
     )
 
     total_score = min(
@@ -76,10 +108,18 @@ def calculate_segment_risk(
             total_score
         ),
         "factors": {
-            "accident": 0,
-            "weather": weather_risk,
-            "sun_glare": sun_risk["sun_glare"],
-            "night": sun_risk["night"],
+            "accident": round(
+                accident_risk
+            ),
+            "weather": round(
+                weather_risk
+            ),
+            "sun_glare": sun_risk[
+                "sun_glare"
+            ],
+            "night": sun_risk[
+                "night"
+            ],
             "road": road_risk,
         },
     }
@@ -102,27 +142,20 @@ def add_segment_risk(
             radius_km=1.0,
         )
 
+        segment["accident"] = accident
+
+        if segment["segment_id"] in weather_by_segment:
+            segment["weather"] = (
+                weather_by_segment[
+                    segment["segment_id"]
+                ]
+            )
+
         risk = calculate_segment_risk(
             segment
         )
 
-        risk["factors"]["accident"] = (
-            accident["risk_score"]
-        )
-
-        risk["risk_score"] = min(
-            risk["risk_score"]
-            + accident["risk_score"],
-            100,
-        )
-
-        risk["risk_level"] = get_risk_level(
-            risk["risk_score"]
-        )
-
         segment.update(risk)
-
-        segment["accident"] = accident
 
     return segments
 
