@@ -1,58 +1,132 @@
-from pathlib import Path
-from math import radians, sin, cos, sqrt, atan2
+import csv
+import io
+import os
+import time
+from math import asin, cos, floor, radians, sin, sqrt
 
-import pandas as pd
+import boto3
+from dotenv import load_dotenv
 
+load_dotenv()
 
-DATASET_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "data"
-    / "raw"
-    / "sehaj1104_accidents"
-    / "indian_roads_dataset.csv"
+S3_BUCKET = os.getenv(
+    "TRUCKVIEW_S3_BUCKET",
+    "truckview-accident-data",
 )
 
+S3_KEY = "indian_roads_dataset.csv"
 
-def load_accident_data() -> pd.DataFrame:
-    if not DATASET_PATH.exists():
-        raise FileNotFoundError(
-            f"Accident dataset not found: {DATASET_PATH}"
+_s3_client = boto3.client("s3")
+
+_accident_data = None
+
+# Grid index: built once per Lambda container, reused on every request.
+# Cell size 0.02 degrees is about 2.2 km, which is larger than the 1 km
+# search radius, so checking the 3x3 neighbouring cells never misses a match.
+GRID_CELL_DEG = 0.02
+_accident_grid = None
+
+
+def load_accident_data() -> list[dict]:
+    global _accident_data
+
+    if _accident_data is not None:
+        return _accident_data
+
+    start = time.time()
+
+    response = _s3_client.get_object(
+        Bucket=S3_BUCKET,
+        Key=S3_KEY,
+    )
+
+    content = response["Body"].read()
+
+    reader = csv.DictReader(
+        io.StringIO(
+            content.decode("utf-8-sig")
         )
+    )
 
-    data = pd.read_csv(DATASET_PATH)
+    _accident_data = list(reader)
+
+    if not _accident_data:
+        raise ValueError(
+            "Accident dataset is empty."
+        )
 
     required_columns = {
         "latitude",
         "longitude",
-        "accident_severity",
-        "date",
-        "city",
-        "state",
     }
 
-    missing_columns = required_columns - set(data.columns)
+    missing_columns = (
+        required_columns
+        - set(_accident_data[0].keys())
+    )
 
     if missing_columns:
         raise ValueError(
-            f"Missing accident dataset columns: {missing_columns}"
+            "Accident dataset is missing required "
+            f"columns: {sorted(missing_columns)}"
         )
 
-    data = data.dropna(
-        subset=[
-            "latitude",
-            "longitude",
-            "accident_severity",
-        ]
-    ).copy()
+    print(
+        f"accident data loaded: {len(_accident_data)} rows "
+        f"in {time.time() - start:.2f}s"
+    )
 
-    return data
+    return _accident_data
+
+
+def _grid_cell(latitude: float, longitude: float) -> tuple:
+    return (
+        int(floor(latitude / GRID_CELL_DEG)),
+        int(floor(longitude / GRID_CELL_DEG)),
+    )
+
+
+def _get_accident_grid(accident_data: list[dict]) -> dict:
+    global _accident_grid
+
+    if _accident_grid is not None:
+        return _accident_grid
+
+    start = time.time()
+
+    grid = {}
+
+    for index, row in enumerate(accident_data):
+        try:
+            accident_lat = float(row["latitude"])
+            accident_lng = float(row["longitude"])
+        except (TypeError, ValueError, KeyError):
+            continue
+
+        cell = _grid_cell(accident_lat, accident_lng)
+
+        if cell not in grid:
+            grid[cell] = []
+
+        grid[cell].append(
+            (index, accident_lat, accident_lng)
+        )
+
+    _accident_grid = grid
+
+    print(
+        f"accident grid built: {len(grid)} cells "
+        f"in {time.time() - start:.2f}s"
+    )
+
+    return _accident_grid
 
 
 def haversine_distance_km(
     lat1: float,
-    lng1: float,
+    lon1: float,
     lat2: float,
-    lng2: float,
+    lon2: float,
 ) -> float:
     earth_radius_km = 6371.0
 
@@ -60,18 +134,24 @@ def haversine_distance_km(
     lat2_rad = radians(lat2)
 
     delta_lat = radians(lat2 - lat1)
-    delta_lng = radians(lng2 - lng1)
+    delta_lon = radians(lon2 - lon1)
 
-    a = (
+    value = (
         sin(delta_lat / 2) ** 2
         + cos(lat1_rad)
         * cos(lat2_rad)
-        * sin(delta_lng / 2) ** 2
+        * sin(delta_lon / 2) ** 2
     )
 
-    return earth_radius_km * 2 * atan2(
-        sqrt(a),
-        sqrt(1 - a),
+    value = min(
+        1.0,
+        max(0.0, value),
+    )
+
+    return (
+        2
+        * earth_radius_km
+        * asin(sqrt(value))
     )
 
 
@@ -79,268 +159,271 @@ def find_nearby_accidents(
     latitude: float,
     longitude: float,
     radius_km: float = 1.0,
-    accident_data: pd.DataFrame | None = None,
-) -> pd.DataFrame:
-    if accident_data is None:
-        accident_data = load_accident_data()
+) -> list[dict]:
+    data = load_accident_data()
 
-    lat_delta = radius_km / 111.0
+    latitude_delta = radius_km / 111.0
 
-    longitude_scale = max(
-        cos(radians(latitude)),
-        0.1,
+    longitude_delta = radius_km / (
+        111.0
+        * max(
+            abs(cos(radians(latitude))),
+            0.01,
+        )
     )
 
-    lng_delta = radius_km / (
-        111.0 * longitude_scale
-    )
+    nearby = []
 
-    candidates = accident_data[
-        accident_data["latitude"].between(
-            latitude - lat_delta,
-            latitude + lat_delta,
-        )
-        & accident_data["longitude"].between(
-            longitude - lng_delta,
-            longitude + lng_delta,
-        )
-    ].copy()
+    min_lat = latitude - latitude_delta
+    max_lat = latitude + latitude_delta
+    min_lng = longitude - longitude_delta
+    max_lng = longitude + longitude_delta
 
-    if candidates.empty:
-        return candidates
-
-    candidates["distance_km"] = (
-        (
-            candidates["latitude"] - latitude
-        ) ** 2
-        + (
-            (
-                candidates["longitude"]
-                - longitude
+    for row in data:
+        try:
+            accident_lat = float(
+                row["latitude"]
             )
-            * longitude_scale
-        ) ** 2
-    ) ** 0.5 * 111.0
+            accident_lng = float(
+                row["longitude"]
+            )
+        except (
+            TypeError,
+            ValueError,
+            KeyError,
+        ):
+            continue
 
-    candidates = candidates[
-        candidates["distance_km"] <= radius_km
-    ].copy()
+        if not (
+            min_lat
+            <= accident_lat
+            <= max_lat
+        ):
+            continue
 
-    return candidates.sort_values(
-        "distance_km"
+        if not (
+            min_lng
+            <= accident_lng
+            <= max_lng
+        ):
+            continue
+
+        distance_km = (
+            haversine_distance_km(
+                latitude,
+                longitude,
+                accident_lat,
+                accident_lng,
+            )
+        )
+
+        if distance_km <= radius_km:
+            accident = dict(row)
+            accident["distance_km"] = (
+                distance_km
+            )
+            nearby.append(accident)
+
+    return nearby
+
+
+def _build_risk_result(
+    severity_counts: dict,
+    accident_count: int,
+) -> dict:
+    weighted_density = 0.0
+
+    for severity, count in (
+        severity_counts.items()
+    ):
+        severity_text = (
+            str(severity).lower()
+        )
+
+        if "fatal" in severity_text:
+            weight = 5
+        elif "major" in severity_text:
+            weight = 3
+        else:
+            weight = 1
+
+        weighted_density += (
+            float(count) * weight
+        )
+
+    risk_score = min(
+        100,
+        round(
+            18 * sqrt(
+                weighted_density
+            )
+        ),
     )
+
+    if risk_score < 25:
+        risk_level = "Low"
+    elif risk_score < 50:
+        risk_level = "Moderate"
+    elif risk_score < 75:
+        risk_level = "High"
+    else:
+        risk_level = "Very High"
+
+    return {
+        "status": "available",
+        "risk_score": risk_score,
+        "risk_level": risk_level,
+        "accident_count": accident_count,
+        "severity_counts": severity_counts,
+    }
+
+
+def _empty_risk_result() -> dict:
+    return {
+        "status": "available",
+        "risk_score": 0,
+        "risk_level": "Low",
+        "accident_count": 0,
+        "severity_counts": {},
+    }
 
 
 def calculate_accident_risk(
-    accidents: pd.DataFrame,
-    segment_length_km: float,
+    latitude: float,
+    longitude: float,
+    radius_km: float = 1.0,
 ) -> dict:
-    if accidents.empty:
-        return {
-            "risk_score": 0,
-            "accident_count": 0,
-            "fatal_count": 0,
-            "major_count": 0,
-            "minor_count": 0,
-        }
-
-    severity_weights = {
-        "minor": 1,
-        "major": 3,
-        "fatal": 5,
-    }
-
-    weighted_score = accidents[
-        "accident_severity"
-    ].map(
-        severity_weights
-    ).fillna(1).sum()
-
-    if segment_length_km <= 0:
-        accident_density = weighted_score
-    else:
-        accident_density = (
-            weighted_score
-            / segment_length_km
-        )
-
-    # Convert weighted accident density into
-    # a bounded 0-100 risk score.
-    #
-    # The dataset is prototype data and contains
-    # dense city-level clusters, so a logarithmic
-    # scale prevents those clusters from immediately
-    # forcing the score to 100.
-    risk_score = round(
-        min(
-            100,
-            18 * (
-                accident_density
-                ** 0.5
-            ),
-        )
+    nearby = find_nearby_accidents(
+        latitude=latitude,
+        longitude=longitude,
+        radius_km=radius_km,
     )
 
-    severity_counts = (
-        accidents["accident_severity"]
-        .value_counts()
-    )
+    if not nearby:
+        return _empty_risk_result()
 
-    return {
-        "risk_score": risk_score,
-        "accident_count": len(accidents),
-        "fatal_count": int(
-            severity_counts.get("fatal", 0)
-        ),
-        "major_count": int(
-            severity_counts.get("major", 0)
-        ),
-        "minor_count": int(
-            severity_counts.get("minor", 0)
-        ),
-    }
+    severity_counts = {}
+
+    for accident in nearby:
+        severity = str(
+            accident.get(
+                "severity",
+                "unknown",
+            )
+        )
+
+        severity_counts[severity] = (
+            severity_counts.get(
+                severity,
+                0,
+            )
+            + 1
+        )
+
+    return _build_risk_result(
+        severity_counts,
+        len(nearby),
+    )
 
 
 def get_segment_accident_summary(
     segment: dict,
-    accident_data: pd.DataFrame | None = None,
+    accident_data: list[dict],
     radius_km: float = 1.0,
 ) -> dict:
-    if accident_data is None:
-        accident_data = load_accident_data()
-
     coordinates = segment.get(
         "coordinates",
         [],
     )
 
     if not coordinates:
-        return calculate_accident_risk(
-            pd.DataFrame(),
-            segment.get("distance_km", 0),
-        )
+        return _empty_risk_result()
 
-    latitudes = [
-        point[1]
-        for point in coordinates
-    ]
+    start = time.time()
 
-    longitudes = [
-        point[0]
-        for point in coordinates
-    ]
+    grid = _get_accident_grid(accident_data)
 
-    min_lat = min(latitudes) - (
-        radius_km / 111.0
-    )
+    matched_accidents = {}
 
-    max_lat = max(latitudes) + (
-        radius_km / 111.0
-    )
-
-    center_lat = (
-        min_lat + max_lat
-    ) / 2
-
-    longitude_scale = max(
-        cos(radians(center_lat)),
-        0.1,
-    )
-
-    lng_delta = radius_km / (
-        111.0 * longitude_scale
-    )
-
-    min_lng = min(longitudes) - lng_delta
-    max_lng = max(longitudes) + lng_delta
-
-    candidates = accident_data[
-        accident_data["latitude"].between(
-            min_lat,
-            max_lat,
-        )
-        & accident_data["longitude"].between(
-            min_lng,
-            max_lng,
-        )
-    ].copy()
-
-    if candidates.empty:
-        return calculate_accident_risk(
-            pd.DataFrame(),
-            segment.get("distance_km", 0),
-        )
-
-    matched_indexes = set()
-
-    for point in coordinates:
-        longitude, latitude = point
-
-        local_candidates = candidates[
-            candidates["latitude"].between(
-                latitude - radius_km / 111.0,
-                latitude + radius_km / 111.0,
-            )
-        ].copy()
-
-        if local_candidates.empty:
+    for coordinate in coordinates:
+        if len(coordinate) < 2:
             continue
 
-        local_longitude_scale = max(
-            cos(radians(latitude)),
-            0.1,
+        longitude = float(
+            coordinate[0]
+        )
+        latitude = float(
+            coordinate[1]
         )
 
-        local_lng_delta = radius_km / (
-            111.0 * local_longitude_scale
+        cell_lat, cell_lng = _grid_cell(
+            latitude,
+            longitude,
         )
 
-        local_candidates = local_candidates[
-            local_candidates["longitude"].between(
-                longitude - local_lng_delta,
-                longitude + local_lng_delta,
-            )
-        ]
-
-        if local_candidates.empty:
-            continue
-
-        distances = (
-            (
-                local_candidates["latitude"]
-                - latitude
-            ) ** 2
-            + (
-                (
-                    local_candidates["longitude"]
-                    - longitude
+        # Only look at this cell and the 8 around it
+        for d_lat in (-1, 0, 1):
+            for d_lng in (-1, 0, 1):
+                candidates = grid.get(
+                    (
+                        cell_lat + d_lat,
+                        cell_lng + d_lng,
+                    )
                 )
-                * local_longitude_scale
-            ) ** 2
-        ) ** 0.5 * 111.0
 
-        matches = local_candidates[
-            distances <= radius_km
-        ]
+                if not candidates:
+                    continue
 
-        matched_indexes.update(
-            matches.index.tolist()
+                for (
+                    index,
+                    accident_lat,
+                    accident_lng,
+                ) in candidates:
+                    if index in matched_accidents:
+                        continue
+
+                    distance_km = (
+                        haversine_distance_km(
+                            latitude,
+                            longitude,
+                            accident_lat,
+                            accident_lng,
+                        )
+                    )
+
+                    if distance_km <= radius_km:
+                        matched_accidents[index] = (
+                            accident_data[index]
+                        )
+
+    print(
+        f"segment accident summary: {len(coordinates)} coords, "
+        f"{len(matched_accidents)} matches, "
+        f"{time.time() - start:.2f}s"
+    )
+
+    if not matched_accidents:
+        return _empty_risk_result()
+
+    severity_counts = {}
+
+    for accident in matched_accidents.values():
+        severity = str(
+            accident.get(
+                "severity",
+                "unknown",
+            )
         )
 
-    if not matched_indexes:
-        return calculate_accident_risk(
-            pd.DataFrame(),
-            segment.get("distance_km", 0),
+        severity_counts[severity] = (
+            severity_counts.get(
+                severity,
+                0,
+            )
+            + 1
         )
 
-    accidents = accident_data.loc[
-        list(matched_indexes)
-    ].copy()
-
-    return calculate_accident_risk(
-        accidents=accidents,
-        segment_length_km=segment.get(
-            "distance_km",
-            0,
-        ),
+    return _build_risk_result(
+        severity_counts,
+        len(matched_accidents),
     )
