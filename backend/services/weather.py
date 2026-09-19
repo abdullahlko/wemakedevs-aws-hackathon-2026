@@ -17,7 +17,6 @@ def classify_weather_risk(
     risk = 0
     factors = []
 
-    # Precipitation
     if precipitation >= 10:
         risk += 35
         factors.append("heavy rain")
@@ -28,7 +27,6 @@ def classify_weather_risk(
         risk += 10
         factors.append("light precipitation")
 
-    # Visibility
     if visibility_m < 1000:
         risk += 35
         factors.append("very low visibility")
@@ -39,7 +37,6 @@ def classify_weather_risk(
         risk += 10
         factors.append("moderate visibility")
 
-    # Wind
     if wind_speed_kmh >= 60:
         risk += 30
         factors.append("strong winds")
@@ -50,13 +47,6 @@ def classify_weather_risk(
         risk += 10
         factors.append("moderate winds")
 
-    # WMO weather codes
-    # 51-57: drizzle
-    # 61-67: rain
-    # 71-77: snow
-    # 80-82: rain showers
-    # 85-86: snow showers
-    # 95-99: thunderstorm
     if weather_code in {95, 96, 99}:
         risk += 30
         factors.append("thunderstorm")
@@ -77,7 +67,25 @@ def classify_weather_risk(
     return {
         "risk_score": risk,
         "risk_level": level,
-        "factors": factors,
+        "risk_factors": factors,
+    }
+
+
+def unavailable_weather(
+    reason: str,
+) -> dict:
+    return {
+        "status": "unavailable",
+        "temperature_c": None,
+        "precipitation_mm": None,
+        "visibility_m": None,
+        "wind_speed_kmh": None,
+        "weather_code": None,
+        "risk_score": None,
+        "risk_level": "Unavailable",
+        "risk_factors": [],
+        "source": "Open-Meteo",
+        "error": reason,
     }
 
 
@@ -96,9 +104,13 @@ async def fetch_weather(
     target_utc = target_time.astimezone(timezone.utc)
 
     date_string = target_utc.strftime("%Y-%m-%d")
-    target_hour = target_utc.strftime("%Y-%m-%dT%H:00")
+    target_hour = target_utc.strftime(
+        "%Y-%m-%dT%H:00"
+    )
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(
+        timezone.utc
+    ).date()
 
     if target_utc.date() >= today:
         url = FORECAST_URL
@@ -136,9 +148,16 @@ async def fetch_weather(
         )
 
     data = response.json()
-    hourly = data.get("hourly", {})
 
-    times = hourly.get("time", [])
+    hourly = data.get(
+        "hourly",
+        {},
+    )
+
+    times = hourly.get(
+        "time",
+        [],
+    )
 
     if target_hour not in times:
         raise RuntimeError(
@@ -146,13 +165,29 @@ async def fetch_weather(
             f"{target_hour}"
         )
 
-    index = times.index(target_hour)
+    index = times.index(
+        target_hour
+    )
 
-    temperature = hourly["temperature_2m"][index]
-    precipitation = hourly["precipitation"][index]
-    weather_code = hourly["weather_code"][index]
-    visibility = hourly["visibility"][index]
-    wind_speed = hourly["wind_speed_10m"][index]
+    temperature = hourly[
+        "temperature_2m"
+    ][index]
+
+    precipitation = hourly[
+        "precipitation"
+    ][index]
+
+    weather_code = hourly[
+        "weather_code"
+    ][index]
+
+    visibility = hourly[
+        "visibility"
+    ][index]
+
+    wind_speed = hourly[
+        "wind_speed_10m"
+    ][index]
 
     values = [
         temperature,
@@ -175,13 +210,22 @@ async def fetch_weather(
         )
 
     weather_risk = classify_weather_risk(
-        precipitation=float(precipitation),
-        visibility_m=float(visibility),
-        wind_speed_kmh=float(wind_speed),
-        weather_code=int(weather_code),
+        precipitation=float(
+            precipitation
+        ),
+        visibility_m=float(
+            visibility
+        ),
+        wind_speed_kmh=float(
+            wind_speed
+        ),
+        weather_code=int(
+            weather_code
+        ),
     )
 
     return {
+        "status": "available",
         "temperature_c": round(
             float(temperature),
             1,
@@ -191,15 +235,23 @@ async def fetch_weather(
             2,
         ),
         "visibility_m": round(
-            float(visibility),
+            float(visibility)
         ),
         "wind_speed_kmh": round(
             float(wind_speed),
             1,
         ),
-        "weather_code": int(weather_code),
-        "risk_score": weather_risk["risk_score"],
-        "risk_level": weather_risk["risk_level"],
-        "risk_factors": weather_risk["factors"],
+        "weather_code": int(
+            weather_code
+        ),
+        "risk_score": weather_risk[
+            "risk_score"
+        ],
+        "risk_level": weather_risk[
+            "risk_level"
+        ],
+        "risk_factors": weather_risk[
+            "risk_factors"
+        ],
         "source": "Open-Meteo",
     }

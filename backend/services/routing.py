@@ -9,7 +9,10 @@ from services.route_segments import (
     add_segment_sunlight,
 )
 
-from services.weather import fetch_weather
+from services.weather import (
+    fetch_weather,
+    unavailable_weather,
+)
 
 from services.risk_engine import (
     add_segment_risk,
@@ -146,17 +149,9 @@ async def calculate_route(
                 f"{error}"
             )
 
-            weather = {
-                "temperature_c": None,
-                "precipitation_mm": None,
-                "visibility_m": None,
-                "wind_speed_kmh": None,
-                "weather_code": None,
-                "risk_score": 0,
-                "risk_level": "Unavailable",
-                "risk_factors": [],
-                "source": "Open-Meteo",
-            }
+            weather = unavailable_weather(
+                str(error)
+            )
 
         segment["weather"] = weather
 
