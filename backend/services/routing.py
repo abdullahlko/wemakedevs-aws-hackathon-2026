@@ -16,6 +16,10 @@ from services.risk_engine import (
     calculate_overall_risk,
 )
 
+from services.rest_planner import (
+    plan_rest_breaks,
+)
+
 
 load_dotenv()
 
@@ -164,6 +168,11 @@ async def calculate_route(
         segments
     )
 
+    rest_plan = plan_rest_breaks(
+        departure_time=departure_time,
+        segments=segments,
+    )
+
     return {
         "distance_km": round(
             summary["lengthInMeters"]
@@ -183,4 +192,5 @@ async def calculate_route(
         "coordinates": route_coordinates,
         "segments": segments,
         "overall_risk": overall_risk,
+        "rest_plan": rest_plan,
     }

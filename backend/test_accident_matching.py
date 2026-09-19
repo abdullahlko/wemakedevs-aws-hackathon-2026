@@ -133,25 +133,138 @@ async def main():
         f"{overall.get('risk_level', 'Unknown')}"
     )
 
+    factors = overall.get(
+        "factors",
+        {},
+    )
+
     print(
         f"Accident factor: "
-        f"{overall.get('factors', {}).get('accident', 0)}"
+        f"{factors.get('accident', 0)}"
     )
 
     print(
         f"Weather factor: "
-        f"{overall.get('factors', {}).get('weather', 0)}"
+        f"{factors.get('weather', 0)}"
     )
 
     print(
         f"Sun glare factor: "
-        f"{overall.get('factors', {}).get('sun_glare', 0)}"
+        f"{factors.get('sun_glare', 0)}"
     )
 
     print(
         f"Night factor: "
-        f"{overall.get('factors', {}).get('night', 0)}"
+        f"{factors.get('night', 0)}"
     )
+
+    print("\n=== INDIA WORK & REST PLAN ===")
+
+    rest_plan = route.get(
+        "rest_plan",
+        {},
+    )
+
+    print(
+        f"Status: "
+        f"{rest_plan.get('status', 'Unknown')}"
+    )
+
+    print(
+        f"Total work: "
+        f"{rest_plan.get('total_work_time', 'Unknown')}"
+    )
+
+    print(
+        f"Break count: "
+        f"{rest_plan.get('break_count', 0)}"
+    )
+
+    print(
+        f"Total break time: "
+        f"{rest_plan.get('total_break_time', 'Unknown')}"
+    )
+
+    print(
+        f"Planned trip time: "
+        f"{rest_plan.get('planned_trip_minutes', 0)} minutes"
+    )
+
+    print(
+        f"Departure: "
+        f"{rest_plan.get('departure_time', 'Unknown')}"
+    )
+
+    print(
+        f"Planned arrival: "
+        f"{rest_plan.get('planned_arrival_time', 'Unknown')}"
+    )
+
+    print(
+        f"Daily work limit: "
+        f"{rest_plan.get('daily_work_limit_minutes', 0)} minutes"
+    )
+
+    print(
+        f"Exceeds single-day work limit: "
+        f"{rest_plan.get('exceeds_single_day_work_limit', False)}"
+    )
+
+    print(
+        f"Rule basis: "
+        f"{rest_plan.get('rule_basis', 'Unknown')}"
+    )
+
+    print(
+        f"Legal note: "
+        f"{rest_plan.get('legal_note', 'Unknown')}"
+    )
+
+    breaks = rest_plan.get(
+        "breaks",
+        [],
+    )
+
+    if breaks:
+        print("\n--- Scheduled Breaks ---")
+
+        for break_item in breaks:
+            print(
+                f"\nBreak {break_item['break_number']}"
+            )
+
+            print(
+                f"  Start: "
+                f"{break_item['start_time']}"
+            )
+
+            print(
+                f"  End: "
+                f"{break_item['end_time']}"
+            )
+
+            print(
+                f"  Duration: "
+                f"{break_item['duration_minutes']} minutes"
+            )
+
+            print(
+                f"  After continuous work: "
+                f"{break_item['after_continuous_work_minutes']} minutes"
+            )
+
+            print(
+                f"  Segment: "
+                f"{break_item['segment_id']}"
+            )
+
+            print(
+                f"  Reason: "
+                f"{break_item['reason']}"
+            )
+
+    else:
+        print("\nNo mandatory break scheduled.")
 
 
 if __name__ == "__main__":
