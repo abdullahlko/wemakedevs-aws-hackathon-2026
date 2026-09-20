@@ -1580,7 +1580,7 @@ function App() {
                             </div>
 
                             <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                                Route & road intelligence
+                                Risk-Aware Logistics Route Planning
                             </div>
                         </div>
                     </div>
@@ -1606,10 +1606,6 @@ function App() {
 
                         <div className="flex min-h-0 items-center">
                             <div className="w-full">
-                                <div className="mb-3 inline-flex items-center gap-2 border-2 border-slate-900 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-[3px_3px_0_#0f172a]">
-                                    <span className="h-2 w-2 bg-amber-400" />
-                                    Plan before you roll
-                                </div>
 
                                 <h1 className="max-w-xl text-[2.65rem] font-black leading-[0.94] tracking-[-0.045em] sm:text-5xl xl:text-[3.4rem]">
                                     Know the road before you drive it.
