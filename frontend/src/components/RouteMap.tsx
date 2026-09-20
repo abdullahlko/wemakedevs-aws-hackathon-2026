@@ -72,7 +72,9 @@ function RouteMap({
                 `<strong>Starting location</strong><br />${fromLocation.name}`,
             )
 
-            const marker = new mapboxgl.Marker()
+            const marker = new mapboxgl.Marker({
+                color: "#16a34a",
+            })
                 .setLngLat([fromLocation.lng, fromLocation.lat])
                 .setPopup(popup)
                 .addTo(map.current)
@@ -87,7 +89,9 @@ function RouteMap({
                 `<strong>Destination</strong><br />${destinationLocation.name}`,
             )
 
-            const marker = new mapboxgl.Marker()
+            const marker = new mapboxgl.Marker({
+                color: "#dc2626",
+            })
                 .setLngLat([
                     destinationLocation.lng,
                     destinationLocation.lat,
@@ -96,6 +100,22 @@ function RouteMap({
                 .addTo(map.current)
 
             markers.current.push(marker)
+        }
+
+        if (route?.coordinates?.length) {
+            const bounds = new mapboxgl.LngLatBounds()
+
+            route.coordinates.forEach((coordinate) => {
+                bounds.extend(coordinate)
+            })
+
+            map.current.fitBounds(bounds, {
+                padding: 70,
+                maxZoom: 9,
+                duration: 800,
+            })
+
+            return
         }
 
         if (fromLocation && destinationLocation) {
@@ -114,6 +134,7 @@ function RouteMap({
             map.current.fitBounds(bounds, {
                 padding: 80,
                 maxZoom: 10,
+                duration: 600,
             })
         } else if (fromLocation) {
             map.current.flyTo({
@@ -122,6 +143,7 @@ function RouteMap({
                     fromLocation.lat,
                 ],
                 zoom: 10,
+                duration: 600,
             })
         } else if (destinationLocation) {
             map.current.flyTo({
@@ -130,12 +152,13 @@ function RouteMap({
                     destinationLocation.lat,
                 ],
                 zoom: 10,
+                duration: 600,
             })
         }
-    }, [fromLocation, destinationLocation])
+    }, [fromLocation, destinationLocation, route])
 
     useEffect(() => {
-        if (!map.current || !route?.coordinates.length) {
+        if (!map.current || !route?.coordinates?.length) {
             return
         }
 
@@ -145,10 +168,10 @@ function RouteMap({
             }
 
             const routeGeoJson = {
-                type: "Feature",
+                type: "Feature" as const,
                 properties: {},
                 geometry: {
-                    type: "LineString",
+                    type: "LineString" as const,
                     coordinates: route.coordinates,
                 },
             }
@@ -181,6 +204,7 @@ function RouteMap({
                 paint: {
                     "line-width": 6,
                     "line-color": "#2563eb",
+                    "line-opacity": 0.9,
                 },
             })
         }
@@ -194,7 +218,7 @@ function RouteMap({
 
     if (!token) {
         return (
-            <div className="flex h-[620px] items-center justify-center bg-slate-100 p-6 text-center">
+            <div className="flex h-full min-h-[420px] items-center justify-center bg-slate-100 p-6 text-center">
                 <div>
                     <p className="font-semibold text-slate-900">
                         Mapbox access token is missing
@@ -209,10 +233,22 @@ function RouteMap({
     }
 
     return (
-        <div
-            ref={mapContainer}
-            className="h-[620px] w-full"
-        />
+        <div className="relative h-full min-h-[420px] w-full overflow-hidden rounded-2xl">
+            <div
+                ref={mapContainer}
+                className="h-full w-full"
+            />
+
+            <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur">
+                <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-green-600" />
+                    <span className="text-slate-700">Start</span>
+
+                    <span className="ml-2 h-2.5 w-2.5 rounded-full bg-red-600" />
+                    <span className="text-slate-700">Destination</span>
+                </div>
+            </div>
+        </div>
     )
 }
 
