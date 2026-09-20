@@ -1,8 +1,6 @@
 # TruckView - Risk-Aware Logistics Route Planning
 
-TruckView is a risk-aware logistics route planning application built for truck journeys.
-
-It combines real road-based routing with historical accident data, weather, sunlight, road conditions and rest planning to help users understand the risks along a shipment route before the journey begins.
+TruckView is a risk-aware long-haul truck trip planning system that combines real road routing with weather, sunlight, historical accident data and other route factors to help users understand a journey before it begins.
 
 ---
 
@@ -12,177 +10,217 @@ Traditional route planning mainly answers:
 
 > **How do I get there?**
 
-TruckView adds:
+For a long-haul truck journey, that is only part of the planning problem.
+
+TruckView also helps answer:
 
 > **What should I know about the journey before I start?**
 
-For truck journeys, conditions can change across different parts of a route and depending on the time of travel. TruckView brings these factors together in a single trip view.
+A planned journey can involve changing weather, sunlight and glare, historical accident exposure, night conditions and different road risks across different sections of the route.
+
+TruckView brings this information together in one trip-planning experience.
 
 ---
 
-## 🚀 Features
+## 🚀 What TruckView Does
 
-### 📍 Smart Location Search
+A user enters:
 
-- Search locations by name with autocomplete
-- Select a starting point and destination without entering coordinates manually
-- Automatically use the selected locations for route planning
+- Starting location
+- Destination
+- Departure date and time
 
-### 🛣️ Real Road-Based Routing
+TruckView then:
 
-- **TomTom Routing API** for road-based routing
-- Routes follow actual roads, highways and streets
+1. Calculates the road route
+2. Breaks the journey into route sections
+3. Enriches those sections with relevant data
+4. Calculates route-level and section-level risk
+5. Plans a rest break
+6. Calculates the expected arrival time
+7. Presents everything in one journey view
+
+---
+
+## ✨ Features
+
+### 📍 Location Search
+
+- Search locations by name
+- Autocomplete suggestions
+- Select real locations without entering coordinates manually
+
+### 🛣️ Real Road Routing
+
+- TomTom road routing
+- Actual roads, highways and streets
 - Traffic information where available
-- Real driving distance and duration
-- Traffic delay information
-- Interactive route visualization using Mapbox
+- Driving distance and duration
+- Traffic delay
+- Map-based route visualization
 
 ### ⚠️ Route Risk Analysis
 
-TruckView combines multiple risk signals into an overall journey risk score:
+TruckView combines multiple risk signals:
 
 - Historical accident data
-- Weather conditions
-- Sunlight and glare
+- Weather
+- Sun glare
 - Night driving
 - Road conditions
 
-Risk is evaluated both for the **overall journey** and for **individual sections of the route**.
+Risk is calculated for both the **overall journey** and individual **route sections**.
 
-### 📊 Section-Level Risk
+### 📊 Risk by Section
 
-Each route section can expose the information contributing to its risk.
+The journey can be explored section by section to understand where conditions change.
 
 Users can inspect:
 
-- Combined section risk
+- Section risk
 - Historical accident information
 - Weather at the planned travel time
-- Sunlight and glare conditions
-- Night or low-light conditions
-- Road-related risk signals
+- Sunlight and glare
+- Night conditions
+- Combined risk factors
 
-This makes it easier to understand where conditions change along the journey.
+### 🌦️ Weather
 
-### 🌦️ Weather at Travel Time
-
-TruckView uses the planned departure time when evaluating weather conditions.
-
-The trip view can include:
+Weather information is evaluated using the planned travel time and can include:
 
 - Temperature
-- Rain conditions
+- Precipitation
 - Wind
 - Weather risk
 
-### ☀️ Sunlight & Glare Analysis
+### ☀️ Sunlight & Glare
 
-TruckView considers sunlight conditions along the route to identify potential glare-related risk.
-
-It evaluates conditions such as:
+TruckView evaluates sunlight conditions along the route, including:
 
 - Daylight
 - Sun position
 - Glare conditions
-- Low-light or night conditions
+- Low-light and night conditions
 
 ### 🚨 Historical Accident Data
 
-TruckView uses historical road accident data as one of the inputs to route risk analysis.
+Historical accident information is incorporated into the route risk analysis.
 
-> **Note:** Accident indicators represent historical recorded data and do not represent live incidents.
+> Accident indicators represent recorded historical road data and are not live incident reports.
 
-### 💤 Rest Break Planning
+### 💤 Rest Planning
 
-TruckView includes a planned rest break based on the expected journey duration.
+TruckView includes a planned rest break based on the journey information.
 
-The trip view provides:
+The journey view shows:
 
-- Number of planned breaks
+- Planned break count
 - Break duration
-- Approximate break timing
-- Expected arrival time
-
-### 🕒 Journey Overview
-
-The journey summary brings the main information together:
-
-- Total distance
-- Driving time
-- Traffic delay
-- Overall risk score
-- Historical accident count
-- Major risk factors
-- Planned rest break
+- Break timing
 - Expected arrival
+
+### 🧭 Route Itinerary
+
+The itinerary combines navigation with route intelligence.
+
+For relevant route steps, users can inspect contextual information such as:
+
+- Weather
+- Historical accidents
+- Sunlight and glare
+- Combined risk
+
+This keeps navigation useful while making the underlying route analysis visible.
 
 ---
 
 ## 🔄 How It Works
 
 ```text
-Start Location
-      +
-Destination
-      +
-Departure Time
-      │
-      ▼
-TruckView Backend
-      │
-      ├───────────────┐
-      ▼               ▼
-TomTom Routing     Open-Meteo
-      │             Weather
-      │               │
-      └───────┬───────┘
-              ▼
-      Risk Analysis
-              │
-      ┌───────┼────────┐
-      ▼       ▼        ▼
- Accidents  Sunlight  Road /
-            & Night   Weather
-              │
-              ▼
-       Overall Risk Score
-              │
-      ┌───────┼──────────┐
-      ▼       ▼          ▼
-    Route   Sections   Rest Plan
-     Map      Risk      + ETA
+Origin + Destination + Departure Time
+                  │
+                  ▼
+          Route Calculation
+                  │
+                  ▼
+          Route Segmentation
+                  │
+       ┌──────────┼──────────┐
+       ▼          ▼          ▼
+    Weather    Sunlight   Accident Data
+       │          │          │
+       └──────────┼──────────┘
+                  ▼
+            Risk Analysis
+                  │
+        ┌─────────┴─────────┐
+        ▼                   ▼
+   Route-Level Risk    Section-Level Risk
+        │                   │
+        └─────────┬─────────┘
+                  ▼
+             Rest Planning
+                  │
+                  ▼
+          Expected Arrival
+                  │
+                  ▼
+          TruckView Journey
 ```
 
 ---
 
-## ☁️ AWS Integration
+## ☁️ AWS Architecture
 
-AWS is used as a core part of the TruckView backend deployment.
-
-### Amazon API Gateway
-
-API Gateway exposes the backend API used by the TruckView frontend.
-
-### AWS Lambda
-
-Lambda runs the backend route processing and risk analysis logic in a serverless environment.
-
-### AWS Architecture
+TruckView uses a serverless AWS architecture for the deployed application.
 
 ```text
-TruckView Frontend
-       │
-       ▼
-Amazon API Gateway
-       │
-       ▼
-AWS Lambda
-       │
-       ├── TomTom Routing API
-       ├── Open-Meteo Weather API
-       ├── Historical Accident Dataset
-       └── Sunlight & Risk Analysis
+                         User
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │ AWS Amplify Hosting │
+                │ React + Vite        │
+                └──────────┬──────────┘
+                           │ HTTPS
+                           ▼
+                ┌─────────────────────┐
+                │ Amazon API Gateway  │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │     AWS Lambda      │
+                │      FastAPI        │
+                │                     │
+                │  Route Processing   │
+                │  Risk Analysis     │
+                │  Accident Matching │
+                │  Sunlight Analysis │
+                │  Rest Planning     │
+                └──────┬─────┬────────┘
+                       │     │
+              ┌────────┘     └─────────┐
+              ▼                        ▼
+        TomTom Routing            Open-Meteo
+        Route + Traffic             Weather
+
+                 Historical Accident Data
 ```
+
+### AWS Services Used
+
+**AWS Amplify Hosting**
+
+Hosts the React + Vite frontend and automatically builds and deploys updates from the GitHub `main` branch.
+
+**Amazon API Gateway**
+
+Provides the HTTPS API used by the frontend to communicate with the backend.
+
+**AWS Lambda**
+
+Runs the FastAPI backend and handles route processing, route segmentation, risk analysis, accident matching, sunlight analysis and rest planning.
 
 ---
 
@@ -200,15 +238,18 @@ AWS Lambda
 
 - Python
 - FastAPI
-- AWS API Gateway
 - AWS Lambda
+- Amazon API Gateway
 
-### APIs & Data
+### External Services
 
-- **TomTom Routing API** - road routing and traffic data
-- **Open-Meteo** - weather data
-- **Mapbox** - map visualization and location search
-- **Historical Indian road accident dataset** - accident risk analysis
+- **TomTom Routing API** for road routing and traffic data
+- **Open-Meteo** for weather data
+- **Mapbox** for map visualization and location search
+
+### Data
+
+- Historical Indian road accident dataset
 
 ---
 
@@ -219,25 +260,18 @@ wemakedevs-aws-hackathon-2026/
 │
 ├── backend/
 │   ├── services/
-│   │   ├── ...                         # Route, accident, weather,
-│   │   │                                # sunlight and risk services
+│   │   ├── ...                    # Route, risk and data services
 │   │
-│   ├── lambda_handler.py               # AWS Lambda entry point
-│   ├── main.py                          # FastAPI application
-│   ├── requirements.txt                # Local/backend dependencies
-│   ├── requirements-lambda.txt        # Lambda deployment dependencies
+│   ├── lambda_handler.py         # AWS Lambda entry point
+│   ├── main.py                   # FastAPI application
+│   ├── requirements.txt          # Backend dependencies
+│   ├── requirements-lambda.txt   # Lambda deployment dependencies
 │   │
 │   ├── test_accident_data.py
 │   ├── test_accident_matching.py
 │   ├── test_accident_service.py
 │   ├── test_rest_planner.py
-│   ├── test_sunlight.py
-│   └── test_bedrock.py                 # Remove if Bedrock is not used
-│
-├── data/
-│   └── raw/
-│       └── sehaj1104_accidents/
-│           └── indian_roads_dataset.csv
+│   └── test_sunlight.py
 │
 ├── frontend/
 │   ├── public/
@@ -264,6 +298,24 @@ wemakedevs-aws-hackathon-2026/
 └── README.md
 ```
 
+### Files kept local
+
+The following should not be committed:
+
+```text
+backend/.env
+backend/venv/
+backend/__pycache__/
+frontend/.env
+frontend/.env.local
+frontend/node_modules/
+frontend/dist/
+```
+
+Use `.env.example` files to document required variables without exposing credentials.
+
+---
+
 ## 🔐 Environment Variables
 
 ### Backend
@@ -274,22 +326,14 @@ Create:
 backend/.env
 ```
 
-Example template:
+Example:
 
 ```env
 TOMTOM_API_KEY=your_tomtom_api_key
 AWS_REGION=your_aws_region
 ```
 
-Add any other variables required by the current backend.
-
-For the repository, keep only:
-
-```text
-backend/.env.example
-```
-
-with placeholder values.
+Add any other variables required by the backend.
 
 ### Frontend
 
@@ -306,37 +350,22 @@ VITE_API_BASE_URL=your_backend_api_url
 VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_access_token
 ```
 
-Keep the real `.env.local` file out of GitHub.
-
-For the repository, keep:
-
-```text
-frontend/.env.example
-```
-
-with placeholder values.
+Never commit real credentials or secret values to GitHub.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Run Locally
 
-### 1. Clone the repository
+### Backend
 
-```bash
-git clone https://github.com/abdullahlko/YOUR_REPOSITORY.git
-cd YOUR_REPOSITORY
-```
-
-### 2. Set up the backend
-
-Create a Python virtual environment:
+Create and activate a virtual environment:
 
 ```bash
 cd backend
 python -m venv venv
 ```
 
-Activate it on Windows:
+On Windows:
 
 ```bash
 venv\Scripts\activate
@@ -348,67 +377,20 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Create your local environment file:
-
-```text
-backend/.env
-```
-
-and add the required configuration.
-
-### 3. Start the backend
+Start the backend:
 
 ```bash
 python main.py
 ```
 
-### 4. Set up the frontend
+### Frontend
 
 Open another terminal:
 
 ```bash
 cd frontend
 npm install
-```
-
-Create:
-
-```text
-.env.local
-```
-
-and add:
-
-```env
-VITE_API_BASE_URL=your_backend_api_url
-VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_access_token
-```
-
-### 5. Start the frontend
-
-```bash
 npm run dev
-```
-
----
-
-## 🌐 Deployment
-
-### Frontend
-
-The frontend is deployed using **Vercel**.
-
-### Backend
-
-The backend is deployed using:
-
-- Amazon API Gateway
-- AWS Lambda
-
-The frontend connects to the deployed backend through:
-
-```env
-VITE_API_BASE_URL
 ```
 
 ---
@@ -421,7 +403,7 @@ VITE_API_BASE_URL
 GET /api/locations/search?query=<location>
 ```
 
-Returns matching locations for autocomplete.
+Returns location suggestions for the search interface.
 
 ### Route Planning
 
@@ -429,17 +411,20 @@ Returns matching locations for autocomplete.
 POST /api/route
 ```
 
-Accepts trip details including:
+Accepts trip information including origin, destination, coordinates and departure time.
 
-```json
-{
-  "from": {},
-  "to": {},
-  "departure": ""
-}
-```
+Returns:
 
-Returns route information, journey metrics, risk information, rest planning and itinerary data.
+- Route information
+- Distance
+- Duration
+- Traffic delay
+- Route sections
+- Navigation instructions
+- Overall risk
+- Section-level risk
+- Rest plan
+- Expected arrival
 
 ### Health Check
 
@@ -451,9 +436,9 @@ Returns the backend health status.
 
 ---
 
-## 📖 Example Journey
+## 📖 Example
 
-A user can enter:
+A user can plan a journey such as:
 
 ```text
 From:       Lucknow
@@ -461,57 +446,41 @@ To:         Delhi
 Departure:  Selected date and time
 ```
 
-TruckView then calculates the route and presents:
+TruckView then provides:
 
 ```text
 Route
-  ↓
+ ↓
 Distance + Driving Time
-  ↓
+ ↓
 Traffic Delay
-  ↓
-Overall Risk Score
-  ↓
-Accident History
-  ↓
-Weather
-  ↓
-Sunlight & Glare
-  ↓
-Night Driving
-  ↓
-Road Conditions
-  ↓
-Section-Level Risk
-  ↓
-Rest Break Plan
-  ↓
+ ↓
+Overall Risk
+ ↓
+Risk Factors
+ ↓
+Risk by Section
+ ↓
+Weather + Sunlight + Accident Context
+ ↓
+Rest Plan
+ ↓
 Expected Arrival
 ```
 
 ---
 
-## 🎯 Hackathon
+## 🎯 WeMakeDevs × AWS First Commit 2026
 
-Built for **WeMakeDevs × AWS First Commit 2026**, part of the **Bharat Builds Tour**.
+TruckView was built for **WeMakeDevs × AWS First Commit 2026**, part of the **Bharat Builds Tour**.
 
-The project was created during the hackathon to address a real-world logistics problem using AWS.
-
-### Submission
-
-- Public GitHub repository
-- YouTube demo video
-- Project writeup
-- AWS-backed deployment
+The project focuses on a real logistics problem and uses AWS cloud services as part of its production architecture.
 
 ---
 
 ## 🤖 AI Tools Used
 
-AI-assisted development tools used during the project:
-
 - ChatGPT
-- Add any other AI tools actually used
 
 AI tools were used for development assistance, debugging, implementation support and documentation.
 
@@ -519,34 +488,32 @@ AI tools were used for development assistance, debugging, implementation support
 
 ## 📚 What I Learned
 
-Building TruckView provided hands-on experience with:
+Building TruckView gave me hands-on experience with:
 
-- AWS API Gateway
 - AWS Lambda
-- Serverless backend deployment
+- Amazon API Gateway
+- AWS Amplify Hosting
+- Serverless deployment
 - React and TypeScript
+- FastAPI
+- External API integration
+- Route segmentation
+- Risk analysis
 - Map-based application development
-- External routing API integration
-- Weather data integration
-- Historical data processing
-- Route-level risk analysis
-- Section-level risk visualization
-- Full-stack deployment
 
 ---
 
 ## 🔮 Future Enhancements
 
-The next version of TruckView can expand the current risk-aware planning system with:
-
-- **Amazon Bedrock** for AI-powered route explanations
-- AI-generated contextual safety insights
+- **Amazon Bedrock** for natural-language explanations of structured route-risk results
 - Alternative route comparison based on risk
-- Historical traffic pattern analysis
-- Real-time incident integration
-- More advanced weather risk analysis
+- Real-time incident data
+- Historical traffic patterns
+- More advanced weather analysis
 - Driver-focused mobile experience
 - Fleet and logistics platform integrations
+
+The planned Bedrock integration would act as an explanation layer over the existing structured route intelligence rather than replacing the underlying calculations.
 
 ---
 
@@ -566,6 +533,7 @@ LinkedIn: https://www.linkedin.com/in/abdullahlko/
 
 This project was created for the **WeMakeDevs × AWS First Commit 2026** hackathon.
 
+Third-party libraries, APIs, datasets and assets remain subject to their respective licenses and terms.
 
 ---
 
