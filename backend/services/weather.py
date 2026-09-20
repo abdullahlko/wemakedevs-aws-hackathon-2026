@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from math import isnan
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -7,10 +8,12 @@ import httpx
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
+INDIA_TIMEZONE = ZoneInfo("Asia/Kolkata")
+
 
 def classify_weather_risk(
     precipitation: float,
-    visibility_m: float,
+    visibility_m: float | None,
     wind_speed_kmh: float,
     weather_code: int,
 ) -> dict:
@@ -27,15 +30,16 @@ def classify_weather_risk(
         risk += 10
         factors.append("light precipitation")
 
-    if visibility_m < 1000:
-        risk += 35
-        factors.append("very low visibility")
-    elif visibility_m < 3000:
-        risk += 20
-        factors.append("reduced visibility")
-    elif visibility_m < 5000:
-        risk += 10
-        factors.append("moderate visibility")
+    if visibility_m is not None:
+        if visibility_m < 1000:
+            risk += 35
+            factors.append("very low visibility")
+        elif visibility_m < 3000:
+            risk += 20
+            factors.append("reduced visibility")
+        elif visibility_m < 5000:
+            risk += 10
+            factors.append("moderate visibility")
 
     if wind_speed_kmh >= 60:
         risk += 30
@@ -98,7 +102,7 @@ async def fetch_weather(
 
     if target_time.tzinfo is None:
         target_time = target_time.replace(
-            tzinfo=timezone.utc
+            tzinfo=INDIA_TIMEZONE
         )
 
     target_utc = target_time.astimezone(timezone.utc)
@@ -189,11 +193,10 @@ async def fetch_weather(
         "wind_speed_10m"
     ][index]
 
-    values = [
+    required_values = [
         temperature,
         precipitation,
         weather_code,
-        visibility,
         wind_speed,
     ]
 
@@ -203,18 +206,27 @@ async def fetch_weather(
             isinstance(value, float)
             and isnan(value)
         )
-        for value in values
+        for value in required_values
     ):
         raise RuntimeError(
-            "Incomplete weather data returned"
+            "Incomplete required weather data returned"
         )
+
+    if (
+        visibility is not None
+        and isinstance(visibility, float)
+        and isnan(visibility)
+    ):
+        visibility = None
 
     weather_risk = classify_weather_risk(
         precipitation=float(
             precipitation
         ),
-        visibility_m=float(
-            visibility
+        visibility_m=(
+            float(visibility)
+            if visibility is not None
+            else None
         ),
         wind_speed_kmh=float(
             wind_speed
@@ -234,8 +246,10 @@ async def fetch_weather(
             float(precipitation),
             2,
         ),
-        "visibility_m": round(
-            float(visibility)
+        "visibility_m": (
+            round(float(visibility))
+            if visibility is not None
+            else None
         ),
         "wind_speed_kmh": round(
             float(wind_speed),
