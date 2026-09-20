@@ -10,7 +10,7 @@ LEGAL_WORK_RULES = {
     "max_weekly_work_minutes": 2880,      # OSH Central Rules 2026, r.64(1)
 }
 
-RULE_BASIS = "India OSH Code 2026 framework (researched, unverified against Gazette originals)"
+RULE_BASIS = "India OSH Code 2026 framework"
 
 
 def format_minutes(minutes: float) -> str:

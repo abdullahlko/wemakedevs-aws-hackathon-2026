@@ -229,6 +229,22 @@ function riskTone(level?: string | null) {
     return "border-slate-200 bg-slate-50 text-slate-600"
 }
 
+function scoreTone(score?: number | null, level?: string | null) {
+    if (score == null) {
+        return riskTone(level)
+    }
+
+    if (score >= 70) {
+        return "border-red-300 bg-red-50 text-red-700"
+    }
+
+    if (score >= 40) {
+        return "border-amber-300 bg-amber-50 text-amber-700"
+    }
+
+    return "border-emerald-300 bg-emerald-50 text-emerald-700"
+}
+
 function factorLabel(value?: number | null) {
     if (value == null) return "Unavailable"
     if (value >= 70) return "High"
@@ -256,18 +272,18 @@ function factorBar(value?: number | null) {
 function availableWeather(weather?: WeatherData | null) {
     return Boolean(
         weather &&
-            (weather.status === "available" ||
-                weather.temperature_c != null ||
-                weather.risk_score != null),
+        (weather.status === "available" ||
+            weather.temperature_c != null ||
+            weather.risk_score != null),
     )
 }
 
 function availableAccident(accident?: AccidentData | null) {
     return Boolean(
         accident &&
-            (accident.status === "available" ||
-                accident.accident_count != null ||
-                accident.risk_score != null),
+        (accident.status === "available" ||
+            accident.accident_count != null ||
+            accident.risk_score != null),
     )
 }
 
@@ -458,12 +474,10 @@ function ContextIndicator({
         kind === "weather"
             ? weatherScore
             : kind === "incident"
-              ? incidentScore
-              : kind === "sun"
-                ? sunScore
-                : riskScore
-
-    const warning = (score ?? 0) >= 40
+                ? incidentScore
+                : kind === "sun"
+                    ? sunScore
+                    : riskScore
 
     let title = ""
     let body: ReactNode = null
@@ -655,9 +669,7 @@ function ContextIndicator({
         )
     }
 
-    const tone = warning
-        ? "border-amber-300 bg-amber-50 text-amber-700"
-        : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:text-slate-700"
+    const tone = scoreTone(score, instruction.risk_level)
 
     const visible = hovered || focused || pinned
 
@@ -928,8 +940,8 @@ function RouteRiskStrip({
                         rank === 3
                             ? "bg-red-500"
                             : rank === 2
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
 
                     return (
                         <div
@@ -945,11 +957,10 @@ function RouteRiskStrip({
                             <button
                                 type="button"
                                 aria-label={`Route section ${index + 1}`}
-                                className={`group h-2.5 w-full ${segmentClass} transition ${
-                                    active
+                                className={`group h-2.5 w-full ${segmentClass} transition ${active
                                         ? "opacity-100 ring-2 ring-slate-900 ring-offset-2"
                                         : "opacity-80 hover:opacity-100"
-                                }`}
+                                    }`}
                                 onMouseEnter={() =>
                                     setActiveSegment(index)
                                 }
@@ -1015,10 +1026,10 @@ function RouteRiskStrip({
                                             {segment.sunlight
                                                 ?.glare_risk != null
                                                 ? Math.round(
-                                                      segment
-                                                          .sunlight
-                                                          .glare_risk,
-                                                  )
+                                                    segment
+                                                        .sunlight
+                                                        .glare_risk,
+                                                )
                                                 : "N/A"}
                                         </span>
                                     </div>
@@ -1048,8 +1059,8 @@ function RouteRiskStrip({
                             : ""}
                         {breaks[0]?.start_time
                             ? ` · ${formatTime(
-                                  breaks[0].start_time,
-                              )}`
+                                breaks[0].start_time,
+                            )}`
                             : ""}
                     </span>
                 </div>
@@ -1079,12 +1090,11 @@ function StepRow({
                 )}
 
                 <div
-                    className={`relative z-10 flex h-7 w-7 items-center justify-center border bg-white text-sm font-medium ${
-                        originalIndex === 0 ||
-                        instruction.maneuver === "ARRIVE"
+                    className={`relative z-10 flex h-7 w-7 items-center justify-center border bg-white text-sm font-medium ${originalIndex === 0 ||
+                            instruction.maneuver === "ARRIVE"
                             ? "border-slate-900 text-slate-900"
                             : "border-slate-300 text-slate-500"
-                    }`}
+                        }`}
                     aria-hidden="true"
                 >
                     {maneuverSymbol(instruction.maneuver)}
@@ -1111,7 +1121,9 @@ function StepRow({
                                     instruction.risk_level,
                                 )}`}
                             >
-                                Elevated risk
+                                {instruction.risk_score >= 70
+                                    ? "High risk"
+                                    : "Moderate risk"}
                             </span>
                         )}
                 </div>
@@ -1229,11 +1241,10 @@ function BreakPlanCard({
 
                     <div className="mt-2 text-2xl font-semibold tracking-tight">
                         {breakCount > 0
-                            ? `${breakCount} planned ${
-                                  breakCount === 1
-                                      ? "break"
-                                      : "breaks"
-                              }`
+                            ? `${breakCount} planned ${breakCount === 1
+                                ? "break"
+                                : "breaks"
+                            }`
                             : "No planned break"}
                     </div>
                 </div>
@@ -1251,26 +1262,26 @@ function BreakPlanCard({
                             : "Planned rest"}
                         {continuousMinutes != null
                             ? ` after about ${Math.round(
-                                  continuousMinutes / 60,
-                              )} hours of continuous work`
+                                continuousMinutes / 60,
+                            )} hours of continuous work`
                             : ""}
                     </div>
 
                     {(firstBreak?.start_time ||
                         firstBreak?.end_time) && (
-                        <div className="text-slate-500">
-                            {firstBreak?.start_time
-                                ? formatTime(
-                                      firstBreak.start_time,
-                                  )
-                                : "N/A"}
-                            {firstBreak?.end_time
-                                ? ` – ${formatTime(
-                                      firstBreak.end_time,
-                                  )}`
-                                : ""}
-                        </div>
-                    )}
+                            <div className="text-slate-500">
+                                {firstBreak?.start_time
+                                    ? formatTime(
+                                        firstBreak.start_time,
+                                    )
+                                    : "N/A"}
+                                {firstBreak?.end_time
+                                    ? ` – ${formatTime(
+                                        firstBreak.end_time,
+                                    )}`
+                                    : ""}
+                            </div>
+                        )}
                 </div>
             ) : (
                 <div className="mt-5 text-sm leading-6 text-slate-300">
@@ -1358,8 +1369,8 @@ function LocationInput({
                 }
                 placeholder={
                     label === "From"
-                        ? "e.g. Lucknow"
-                        : "e.g. Delhi"
+                        ? "City, terminal or starting point"
+                        : "City, terminal or destination"
                 }
                 className="w-full border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-900"
             />
@@ -1456,20 +1467,14 @@ function App() {
             if (!response.ok || data.error) {
                 throw new Error(
                     data.error ||
-                        "Could not calculate route.",
+                    "Could not calculate route.",
                 )
             }
 
+            // Keep the user at the top. The map camera transition is
+            // handled by RouteMap when the route data arrives.
             setTrip(data)
             setShowAllSteps(false)
-
-            setTimeout(() => {
-                document
-                    .getElementById("journey")
-                    ?.scrollIntoView({
-                        behavior: "smooth",
-                    })
-            }, 100)
         } catch (error) {
             console.error(error)
 
@@ -1522,9 +1527,9 @@ function App() {
         () =>
             showAllSteps
                 ? getVisibleInstructions(
-                      instructions,
-                      true,
-                  )
+                    instructions,
+                    true,
+                )
                 : compactItems,
         [compactItems, instructions, showAllSteps],
     )
@@ -1535,244 +1540,408 @@ function App() {
     )
 
     return (
-        <main className="min-h-screen bg-[#f7f7f5] text-slate-900">
-            <header className="border-b border-slate-200 bg-white">
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-                    <div>
-                        <div className="text-xl font-bold tracking-tight">
-                            TruckView
+        <main className="min-h-screen bg-[#f2f0ea] text-slate-950 selection:bg-amber-200">
+            {/* ========================================================= */}
+            {/* HEADER                                                    */}
+            {/* ========================================================= */}
+
+            <header className="sticky top-0 z-[60] border-b-2 border-slate-900 bg-[#f8f7f3] shadow-[0_2px_0_rgba(15,23,42,0.12)]">
+                <div className="mx-auto flex h-[66px] max-w-[1440px] items-center justify-between px-5 sm:px-8">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-slate-900 bg-amber-400 shadow-[3px_3px_0_#0f172a]">
+                            <svg
+                                viewBox="0 0 32 32"
+                                className="h-6 w-6"
+                                fill="none"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M4 9h15v11H4zM19 13h5l4 4v3h-9z"
+                                    fill="currentColor"
+                                />
+                                <circle
+                                    cx="10"
+                                    cy="23"
+                                    r="3"
+                                    fill="currentColor"
+                                />
+                                <circle
+                                    cx="24"
+                                    cy="23"
+                                    r="3"
+                                    fill="currentColor"
+                                />
+                            </svg>
                         </div>
 
-                        <div className="text-xs text-slate-500">
-                            Risk-aware planning for long-haul truck journeys
+                        <div>
+                            <div className="text-lg font-black tracking-tight">
+                                TruckView
+                            </div>
+
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                                Route & road intelligence
+                            </div>
                         </div>
                     </div>
 
-                    <div className="hidden text-sm text-slate-500 sm:block">
-                        Route planning
+                    <div className="hidden items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 sm:flex">
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        </span>
+                        Live route planning
                     </div>
                 </div>
             </header>
 
-            <section className="min-h-[calc(100vh-73px)]">
-                <div className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl grid-cols-1 gap-8 px-6 py-8 lg:grid-cols-[380px_1fr]">
-                    <div className="flex flex-col justify-center">
-                        <div className="mb-8">
-                            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                Plan a trip
-                            </p>
+            {!trip ? (
+                <section className="relative overflow-visible lg:h-[calc(100dvh-66px)] lg:overflow-hidden">
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-2 border-b border-slate-900 bg-[repeating-linear-gradient(135deg,#f59e0b_0,#f59e0b_12px,#111827_12px,#111827_24px)] opacity-90" />
 
-                            <h1 className="max-w-md text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-                                Know the road before you drive it.
-                            </h1>
+                    <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-5 px-5 py-6 sm:px-8 lg:h-full lg:grid-cols-[0.76fr_1.24fr] lg:gap-6 lg:py-5">
+                        {/* ------------------------------------------------- */}
+                        {/* LEFT — PLANNER                                    */}
+                        {/* ------------------------------------------------- */}
 
-                            <p className="mt-4 max-w-md text-base leading-7 text-slate-600">
-                                Enter a journey and TruckView combines route data, weather, sunlight, accident history and rest planning into one trip view.
-                            </p>
+                        <div className="flex min-h-0 items-center">
+                            <div className="w-full">
+                                <div className="mb-3 inline-flex items-center gap-2 border-2 border-slate-900 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-[3px_3px_0_#0f172a]">
+                                    <span className="h-2 w-2 bg-amber-400" />
+                                    Plan before you roll
+                                </div>
+
+                                <h1 className="max-w-xl text-[2.65rem] font-black leading-[0.94] tracking-[-0.045em] sm:text-5xl xl:text-[3.4rem]">
+                                    Know the road before you drive it.
+                                </h1>
+
+                                <p className="mt-3 max-w-xl text-sm leading-[1.375rem] text-slate-600 xl:text-[15px]">
+                                    Plan a road journey and understand the route through weather, sunlight, historical accident data, road risk and planned rest points.
+                                </p>
+
+                                <div className="mt-4 border-2 border-slate-900 bg-[#fffdf8] p-4 shadow-[6px_6px_0_#0f172a] xl:p-[18px]">
+                                    <div className="mb-4 flex items-center justify-between gap-3">
+                                        <div>
+                                            <div className="text-xs font-black uppercase tracking-[0.14em]">
+                                                Trip planner
+                                            </div>
+
+                                            <div className="mt-1 text-xs text-slate-500">
+                                                Choose your route and departure.
+                                            </div>
+                                        </div>
+
+                                        <div className="hidden border border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:block">
+                                            Live route data
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <LocationInput
+                                            label="From"
+                                            value={fromText}
+                                            selected={fromLocation}
+                                            onChange={setFromText}
+                                            onSelect={(location) => {
+                                                setFromLocation(location)
+                                                setFromText(location.name)
+                                            }}
+                                        />
+
+                                        <div className="relative flex justify-center">
+                                            <div className="absolute left-4 top-1/2 h-px w-[calc(100%-32px)] -translate-y-1/2 bg-slate-200" />
+
+                                            <div className="relative z-10 flex h-7 w-7 items-center justify-center border-2 border-slate-900 bg-amber-400 shadow-[2px_2px_0_#0f172a]">
+                                                <span className="text-xs font-black">
+                                                    ↓
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <LocationInput
+                                            label="Destination"
+                                            value={destinationText}
+                                            selected={destinationLocation}
+                                            onChange={setDestinationText}
+                                            onSelect={(location) => {
+                                                setDestinationLocation(location)
+                                                setDestinationText(location.name)
+                                            }}
+                                        />
+
+                                        <div>
+                                            <label className="mb-1.5 block text-sm font-bold text-slate-700">
+                                                Departure
+                                            </label>
+
+                                            <input
+                                                type="datetime-local"
+                                                value={departureTime}
+                                                onChange={(event) =>
+                                                    setDepartureTime(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                className="w-full border-2 border-slate-300 bg-white px-4 py-2.5 text-sm font-medium outline-none transition focus:border-slate-900 focus:shadow-[3px_3px_0_#f59e0b]"
+                                            />
+                                        </div>
+
+                                        {error && (
+                                            <div className="border-2 border-red-700 bg-red-50 px-4 py-2.5 text-sm font-semibold leading-5 text-red-800">
+                                                {error}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={planRoute}
+                                            disabled={loading}
+                                            className="group flex w-full items-center justify-between border-2 border-slate-900 bg-slate-950 px-5 py-3.5 text-left text-sm font-black text-white shadow-[5px_5px_0_#f59e0b] transition duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#f59e0b] active:translate-x-[3px] active:translate-y-[3px] active:shadow-[2px_2px_0_#f59e0b] disabled:cursor-wait disabled:opacity-60"
+                                        >
+                                            <span>
+                                                {loading
+                                                    ? "Analyzing route..."
+                                                    : "Analyze this journey"}
+                                            </span>
+
+                                            <span className="text-xl transition-transform group-hover:translate-x-1">
+                                                →
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="border border-slate-200 bg-white p-5 shadow-sm">
-                            <div className="space-y-5">
-                                <LocationInput
-                                    label="From"
-                                    value={fromText}
-                                    selected={fromLocation}
-                                    onChange={setFromText}
-                                    onSelect={(location) => {
-                                        setFromLocation(
-                                            location,
-                                        )
-                                        setFromText(
-                                            location.name,
-                                        )
-                                    }}
-                                />
+                        {/* ------------------------------------------------- */}
+                        {/* RIGHT — ALWAYS LIVE MAP                           */}
+                        {/* ------------------------------------------------- */}
 
-                                <LocationInput
-                                    label="To"
-                                    value={destinationText}
-                                    selected={
-                                        destinationLocation
-                                    }
-                                    onChange={
-                                        setDestinationText
-                                    }
-                                    onSelect={(location) => {
-                                        setDestinationLocation(
-                                            location,
-                                        )
-                                        setDestinationText(
-                                            location.name,
-                                        )
-                                    }}
-                                />
+                        <div className="relative min-h-[460px] lg:min-h-0">
+                            <div className="absolute inset-3 rotate-[-1.2deg] border-2 border-slate-900 bg-[#e8e4d8] shadow-[8px_8px_0_#0f172a]" />
 
-                                <div>
-                                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                                        Departure
-                                    </label>
-
-                                    <input
-                                        type="datetime-local"
-                                        value={departureTime}
-                                        onChange={(event) =>
-                                            setDepartureTime(
-                                                event.target
-                                                    .value,
-                                            )
+                            <div className="relative h-[460px] overflow-hidden border-2 border-slate-900 bg-white p-3 shadow-[8px_8px_0_#0f172a] lg:h-full">
+                                <div className="relative h-full min-h-0 overflow-hidden border-2 border-slate-900">
+                                    <RouteMap
+                                        fromLocation={fromLocation}
+                                        destinationLocation={
+                                            destinationLocation
                                         }
-                                        className="w-full border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-900"
+                                        route={null}
                                     />
                                 </div>
 
-                                {error && (
-                                    <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                        {error}
-                                    </div>
-                                )}
+                                <div className="pointer-events-none absolute left-6 top-6 z-10 flex items-center gap-2 border-2 border-slate-900 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] shadow-[3px_3px_0_#0f172a]">
+                                    <span className="relative flex h-2.5 w-2.5">
+                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+                                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                                    </span>
 
-                                <button
-                                    type="button"
-                                    onClick={planRoute}
-                                    disabled={loading}
-                                    className="w-full bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                                >
-                                    {loading
-                                        ? "Planning route..."
-                                        : "Plan route"}
-                                </button>
+                                    Live route map
+                                </div>
+
+                                <div className="pointer-events-none absolute bottom-5 right-5 z-10 hidden max-w-xs border-2 border-slate-900 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] shadow-[3px_3px_0_#0f172a] md:block">
+                                    Drag · zoom · explore
+                                </div>
+
+                                {!fromLocation &&
+                                    !destinationLocation && (
+                                        <div className="pointer-events-none absolute bottom-5 left-5 z-10 max-w-xs border-2 border-slate-900 bg-white px-4 py-3 text-xs font-bold leading-5 shadow-[3px_3px_0_#0f172a]">
+                                            Select your starting point and
+                                            destination to prepare the route
+                                            view.
+                                        </div>
+                                    )}
                             </div>
                         </div>
-
-                        <div className="mt-5 text-xs leading-5 text-slate-500">
-                            Route and traffic data from TomTom. Weather from Open-Meteo.
-                        </div>
                     </div>
-
-                    <div className="flex items-center">
-                        <div className="h-[560px] w-full overflow-hidden border border-slate-200 bg-slate-200 shadow-sm">
-                            <RouteMap
-                                fromLocation={fromLocation}
-                                destinationLocation={
-                                    destinationLocation
-                                }
-                                route={route || null}
-                            />
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {trip && route && (
+                </section>
+            ) : (
                 <>
-                    <section
-                        id="journey"
-                        className="border-t border-slate-200 bg-white"
-                    >
-                        <div className="mx-auto max-w-7xl px-6 py-20">
-                            <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
-                                <div>
-                                    <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                        Your journey
-                                    </p>
+                    {/* ===================================================== */}
+                    {/* ANALYSIS HEADER                                       */}
+                    {/* ===================================================== */}
 
-                                    <h2 className="mt-3 text-3xl font-bold tracking-tight">
-                                        {
-                                            trip.origin.name.split(
-                                                ",",
-                                            )[0]
-                                        }{" "}
-                                        <span className="text-slate-400">
-                                            to
-                                        </span>{" "}
-                                        {
-                                            trip.destination.name.split(
-                                                ",",
-                                            )[0]
-                                        }
-                                    </h2>
+                    <section className="border-b-2 border-slate-900 bg-[#f8f7f3]">
+                        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-5 px-5 py-5 sm:px-8">
+                            <div className="min-w-0">
+                                <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                    <span className="relative flex h-2.5 w-2.5">
+                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                                    </span>
 
-                                    <p className="mt-2 text-sm text-slate-500">
-                                        Departing{" "}
-                                        {formatTime(
-                                            restPlan?.departure_time ||
-                                                departureTime,
-                                        )}
+                                    Journey analysis
+                                </div>
+
+                                <h1 className="truncate text-2xl font-black tracking-[-0.03em] sm:text-3xl">
+                                    {trip.origin.name.split(",")[0]}
+
+                                    <span className="mx-2 text-slate-400">
+                                        →
+                                    </span>
+
+                                    {trip.destination.name.split(",")[0]}
+                                </h1>
+
+                                <p className="mt-1 hidden text-sm text-slate-500 sm:block">
+                                    Route, road conditions and journey context for this trip.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setTrip(null)
+                                    setError("")
+                                }}
+                                className="group flex shrink-0 items-center gap-3 border-2 border-slate-900 bg-amber-400 px-4 py-3 text-xs font-black uppercase tracking-[0.08em] shadow-[4px_4px_0_#0f172a] transition duration-200 hover:-translate-y-0.5 hover:bg-amber-300 hover:shadow-[5px_5px_0_#0f172a] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0_#0f172a]"
+                            >
+                                <span className="text-base transition-transform group-hover:-translate-x-1">
+                                    ←
+                                </span>
+
+                                <span className="hidden sm:inline">
+                                    Plan another trip
+                                </span>
+
+                                <span className="sm:hidden">
+                                    New trip
+                                </span>
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* ===================================================== */}
+                    {/* TOP ANALYSIS — TEXT LEFT / MAP RIGHT                 */}
+                    {/* ===================================================== */}
+
+                    <section className="mx-auto max-w-[1440px] px-5 py-6 sm:px-8">
+                        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] lg:items-stretch">
+                            {/* LEFT — ANALYSIS */}
+                            <div className="space-y-4">
+                                <div className="border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                                    <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                                        Journey snapshot
+                                    </div>
+
+                                    <div className="mt-4 grid grid-cols-2 gap-3">
+                                       <RiskMetric
+                                            label="Distance"
+                                            value={`${Math.round(
+                                                route?.distance_km ?? 0,
+                                            )} km`}
+                                        />
+
+                                        <RiskMetric
+                                            label="Journey time"
+                                            value={formatDuration(
+                                                route?.duration_minutes ?? 0,
+                                            )}
+                                        />
+
+                                        <RiskMetric
+                                            label="Traffic delay"
+                                            value={formatDuration(
+                                                route?.traffic_delay_minutes ?? 0,
+                                            )}
+                                        />
+
+                                        <RiskMetric
+                                            label="Historical"
+                                            value={`${incidentCount} accidents`}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div
+                                    className={`border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a] ${overallRisk?.risk_score == null
+                                            ? "bg-slate-200"
+                                            : overallRisk.risk_score >= 70
+                                                ? "bg-red-400"
+                                                : overallRisk.risk_score >= 40
+                                                    ? "bg-amber-400"
+                                                    : "bg-emerald-400"
+                                        }`}
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <div className="text-[10px] font-black uppercase tracking-[0.16em]">
+                                                Overall route risk
+                                            </div>
+
+                                            <div className="mt-2 text-4xl font-black tabular-nums">
+                                                {overallRisk?.risk_score !=
+                                                    null
+                                                    ? Math.round(
+                                                        overallRisk.risk_score,
+                                                    )
+                                                    : "N/A"}
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            className={`border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black ${scoreTone(
+                                                overallRisk?.risk_score,
+                                                overallRisk?.risk_level,
+                                            )}`}
+                                        >
+                                            {overallRisk?.risk_level ||
+                                                "Unavailable"}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 h-3 border-2 border-slate-900 bg-white">
+                                        <div
+                                            className={`h-full ${overallRisk?.risk_score ==
+                                                    null
+                                                    ? "bg-slate-400"
+                                                    : overallRisk.risk_score >=
+                                                        70
+                                                        ? "bg-red-600"
+                                                        : overallRisk.risk_score >=
+                                                            40
+                                                            ? "bg-amber-500"
+                                                            : "bg-emerald-600"
+                                                }`}
+                                            style={{
+                                                width: `${Math.max(
+                                                    0,
+                                                    Math.min(
+                                                        100,
+                                                        overallRisk?.risk_score ??
+                                                        0,
+                                                    ),
+                                                )}%`,
+                                            }}
+                                        />
+                                    </div>
+
+                                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-800">
+                                        Score is based on the conditions along this route.
                                     </p>
                                 </div>
 
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`border px-3 py-2 text-sm font-semibold ${riskTone(
-                                            overallRisk?.risk_level,
-                                        )}`}
-                                    >
-                                        Risk{" "}
-                                        {overallRisk?.risk_score !=
-                                        null
-                                            ? Math.round(
-                                                  overallRisk.risk_score,
-                                              )
-                                            : "N/A"}
+                                <div className="border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                                                Journey factors
+                                            </div>
+
+                                            <div className="mt-1 text-sm font-bold">
+                                                What shapes the score?
+                                            </div>
+                                        </div>
+
+                                        <div className="text-lg">⚙</div>
                                     </div>
 
-                                    <div className="text-sm text-slate-500">
-                                        {overallRisk?.risk_level ||
-                                            "Risk unavailable"}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid gap-3 sm:grid-cols-4">
-                                <RiskMetric
-                                    label="Distance"
-                                    value={`${Math.round(
-                                        route.distance_km,
-                                    )} km`}
-                                />
-
-                                <RiskMetric
-                                    label="Driving time"
-                                    value={formatDuration(
-                                        route.duration_minutes,
-                                    )}
-                                />
-
-                                <RiskMetric
-                                    label="Traffic delay"
-                                    value={formatDuration(
-                                        route.traffic_delay_minutes,
-                                    )}
-                                />
-
-                                <RiskMetric
-                                    label="Historical accidents"
-                                    value={`${incidentCount}`}
-                                    score={
-                                        overallRisk?.factors
-                                            ?.accident
-                                    }
-                                />
-                            </div>
-
-                            <div className="mt-10 grid gap-8 lg:grid-cols-[1.35fr_0.85fr]">
-                                <div className="border border-slate-200 p-6">
-                                    <div>
-                                        <h3 className="text-lg font-semibold">
-                                            What shapes the route risk?
-                                        </h3>
-
-                                        <p className="mt-1 text-sm text-slate-500">
-                                            These are the route-level factors returned by the risk model.
-                                        </p>
-                                    </div>
-
-                                    <div className="mt-5">
+                                    <div className="mt-3">
                                         <JourneyFactor
                                             label="Accident history"
                                             value={
-                                                overallRisk
-                                                    ?.factors
+                                                overallRisk?.factors
                                                     ?.accident
                                             }
                                         />
@@ -1780,201 +1949,195 @@ function App() {
                                         <JourneyFactor
                                             label="Weather"
                                             value={
-                                                overallRisk
-                                                    ?.factors
-                                                    ?.weather
+                                                overallRisk?.factors?.weather
                                             }
                                         />
 
                                         <JourneyFactor
                                             label="Sun glare"
                                             value={
-                                                overallRisk
-                                                    ?.factors
-                                                    ?.sun_glare
+                                                overallRisk?.factors?.sun_glare
                                             }
                                         />
 
                                         <JourneyFactor
                                             label="Night driving"
                                             value={
-                                                overallRisk
-                                                    ?.factors
-                                                    ?.night
+                                                overallRisk?.factors?.night
                                             }
                                         />
 
                                         <JourneyFactor
                                             label="Road conditions"
                                             value={
-                                                overallRisk
-                                                    ?.factors?.road
+                                                overallRisk?.factors?.road
                                             }
                                         />
                                     </div>
                                 </div>
+                            </div>
 
-                                <BreakPlanCard restPlan={restPlan} />
+                            {/* RIGHT — MAP */}
+                            <div className="relative min-h-[540px] lg:min-h-[620px]">
+                                <div className="absolute inset-3 rotate-[1deg] border-2 border-slate-900 bg-[#e8e4d8] shadow-[8px_8px_0_#0f172a]" />
+
+                                <div className="relative h-full min-h-[540px] overflow-hidden border-2 border-slate-900 bg-white p-3 shadow-[8px_8px_0_#0f172a] transition-all duration-700 ease-out lg:min-h-[620px]">
+                                    <div className="relative h-full min-h-0 overflow-hidden border-2 border-slate-900">
+                                        <RouteMap
+                                            fromLocation={trip.origin}
+                                            destinationLocation={
+                                                trip.destination
+                                            }
+                                            route={route ?? null}
+                                        />
+                                    </div>
+
+                                    <div className="pointer-events-none absolute left-6 top-6 z-10 flex items-center gap-2 border-2 border-slate-900 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] shadow-[3px_3px_0_#0f172a]">
+                                        <span className="relative flex h-2.5 w-2.5">
+                                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+                                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                                        </span>
+
+                                        Route map
+                                    </div>
+
+                                    <div className="pointer-events-none absolute bottom-5 right-5 z-10 border-2 border-slate-900 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] shadow-[3px_3px_0_#0f172a]">
+                                        Route analyzed
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </section>
 
-                    <section className="border-t border-slate-200 bg-[#f7f7f5]">
-                        <div className="mx-auto max-w-7xl px-6 py-20">
-                            <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+                    {/* ===================================================== */}
+                    {/* RISK ALONG THE ROUTE                                */}
+                    {/* ===================================================== */}
+
+                    <section
+                        id="journey"
+                        className="border-y-2 border-slate-900 bg-[#e9e5da]"
+                    >
+                        <div className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8">
+                            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                                 <div>
-                                    <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                        Route itinerary
-                                    </p>
+                                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                        Risk along the road
+                                    </div>
 
-                                    <h2 className="mt-2 text-3xl font-bold tracking-tight">
-                                        {
-                                            trip.origin.name.split(
-                                                ",",
-                                            )[0]
-                                        }{" "}
-                                        →
-                                        {
-                                            trip.destination.name.split(
-                                                ",",
-                                            )[0]
-                                        }
+                                    <h2 className="mt-1 text-2xl font-black tracking-tight">
+                                        Where conditions change
                                     </h2>
-
-                                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                                        Navigation instructions stay primary. The indicators beside each step expose the actual weather, historical accident, sunlight and combined-risk data behind the route.
-                                    </p>
                                 </div>
 
-                                <div className="text-sm text-slate-500">
-                                    {instructions.length} total instructions
+                                <div className="flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    <span className="flex items-center gap-1.5">
+                                        <i className="h-2.5 w-2.5 bg-emerald-500" />
+                                        Low
+                                    </span>
+
+                                    <span className="flex items-center gap-1.5">
+                                        <i className="h-2.5 w-2.5 bg-amber-500" />
+                                        Moderate
+                                    </span>
+
+                                    <span className="flex items-center gap-1.5">
+                                        <i className="h-2.5 w-2.5 bg-red-500" />
+                                        High
+                                    </span>
                                 </div>
                             </div>
 
-                            <div className="overflow-visible border border-slate-200 bg-white">
-                                <div className="border-b border-slate-200 px-6 py-5">
-                                    <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
-                                        <div>
-                                            <div className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">
-                                                Leg 1
-                                            </div>
-
-                                            <div className="mt-1 text-lg font-semibold text-slate-900">
-                                                {
-                                                    trip.origin.name.split(
-                                                        ",",
-                                                    )[0]
-                                                }{" "}
-                                                <span className="font-normal text-slate-400">
-                                                    →
-                                                </span>{" "}
-                                                {
-                                                    trip.destination.name.split(
-                                                        ",",
-                                                    )[0]
-                                                }
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-x-7 gap-y-3 sm:grid-cols-4">
-                                            <div>
-                                                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                                    Distance
-                                                </div>
-
-                                                <div className="mt-1 text-sm font-semibold tabular-nums">
-                                                    {Math.round(
-                                                        route.distance_km,
-                                                    )}{" "}
-                                                    km
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                                    Driving
-                                                </div>
-
-                                                <div className="mt-1 text-sm font-semibold tabular-nums">
-                                                    {formatDuration(
-                                                        route.duration_minutes,
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                                    Historical
-                                                </div>
-
-                                                <div className="mt-1 text-sm font-semibold tabular-nums">
-                                                    {incidentCount}{" "}
-                                                    accidents
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                                                    Overall risk
-                                                </div>
-
-                                                <div className="mt-1 text-sm font-semibold tabular-nums">
-                                                    {overallRisk?.risk_score !=
-                                                    null
-                                                        ? Math.round(
-                                                              overallRisk.risk_score,
-                                                          )
-                                                        : "N/A"}
-                                                    {overallRisk?.risk_level
-                                                        ? ` · ${overallRisk.risk_level}`
-                                                        : ""}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
+                            <div className="border-2 border-slate-900 bg-white shadow-[5px_5px_0_#0f172a]">
                                 <RouteRiskStrip
                                     segments={segments}
                                     breaks={restPlan?.breaks ?? []}
                                 />
+                            </div>
+                        </div>
+                    </section>
 
-                                <div className="px-6 py-7">
+                    {/* ===================================================== */}
+                    {/* ITINERARY                                             */}
+                    {/* ===================================================== */}
+
+                    <section className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8">
+                        <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
+                            <div className="border-2 border-slate-900 bg-white shadow-[6px_6px_0_#0f172a]">
+                                <div className="border-b-2 border-slate-900 p-5 sm:p-6">
+                                    <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                                        <div>
+                                            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                                                Route itinerary
+                                            </div>
+
+                                            <h2 className="mt-1 text-2xl font-black tracking-tight">
+                                                Navigation + road context
+                                            </h2>
+
+                                            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                                                Navigation stays primary. Context controls expose the actual weather, historical accident, sunlight and combined-risk values for each returned step.
+                                            </p>
+                                        </div>
+
+                                        {hiddenCount > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setShowAllSteps(
+                                                        (value) => !value,
+                                                    )
+                                                }
+                                                className="shrink-0 border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black shadow-[3px_3px_0_#0f172a] transition hover:bg-slate-100 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_#0f172a]"
+                                            >
+                                                {showAllSteps
+                                                    ? "Show compact itinerary"
+                                                    : `Show all ${instructions.length} steps`}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="p-5 sm:p-7">
                                     {instructions.length > 0 ? (
                                         <>
-                                            <div className="mb-5 flex flex-col justify-between gap-2 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
+                                            <div className="mb-6 grid grid-cols-2 gap-3 border-b-2 border-slate-100 pb-5 sm:grid-cols-4">
                                                 <div>
-                                                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                                                        {showAllSteps
-                                                            ? "Full itinerary"
-                                                            : "Main route steps"}
+                                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                        Steps
                                                     </div>
-
-                                                    <div className="mt-1 text-sm text-slate-600">
-                                                        {showAllSteps
-                                                            ? "Every returned navigation instruction is shown."
-                                                            : "Turns, exits, route changes and meaningful risk points are kept visible."}
+                                                    <div className="mt-1 text-lg font-black">
+                                                        {instructions.length}
                                                     </div>
                                                 </div>
 
-                                                {hiddenCount > 0 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setShowAllSteps(
-                                                                (
-                                                                    value,
-                                                                ) =>
-                                                                    !value,
-                                                            )
-                                                        }
-                                                        className="border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
-                                                    >
-                                                        {showAllSteps
-                                                            ? "Show compact itinerary"
-                                                            : `Show all ${instructions.length} steps`}
-                                                    </button>
-                                                )}
+                                                <div>
+                                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                        Sections
+                                                    </div>
+                                                    <div className="mt-1 text-lg font-black">
+                                                        {segments.length}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                        Breaks
+                                                    </div>
+                                                    <div className="mt-1 text-lg font-black">
+                                                        {restPlan?.break_count ?? 0}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                        Arrival
+                                                    </div>
+                                                    <div className="mt-1 text-lg font-black">
+                                                        {formatTime(
+                                                            restPlan?.planned_arrival_time,
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             <div className="max-w-5xl">
@@ -1988,25 +2151,23 @@ function App() {
                                                     ) => {
                                                         const previous =
                                                             visibleItems[
-                                                                visibleIndex -
-                                                                    1
+                                                            visibleIndex -
+                                                            1
                                                             ]
 
                                                         const gapCount =
-                                                            previous ==
-                                                            null
+                                                            previous == null
                                                                 ? 0
                                                                 : originalIndex -
-                                                                      previous.originalIndex -
-                                                                      1
+                                                                previous.originalIndex -
+                                                                1
 
                                                         const isFirstInDisplayedSegment =
                                                             visibleIndex ===
-                                                                0 ||
-                                                            previous
-                                                                ?.instruction
+                                                            0 ||
+                                                            previous?.instruction
                                                                 .segment_id !==
-                                                                instruction.segment_id
+                                                            instruction.segment_id
 
                                                         return (
                                                             <div
@@ -2016,12 +2177,12 @@ function App() {
                                                             >
                                                                 {gapCount >
                                                                     0 && (
-                                                                    <StepGap
-                                                                        count={
-                                                                            gapCount
-                                                                        }
-                                                                    />
-                                                                )}
+                                                                        <StepGap
+                                                                            count={
+                                                                                gapCount
+                                                                            }
+                                                                        />
+                                                                    )}
 
                                                                 <StepRow
                                                                     instruction={
@@ -2033,7 +2194,7 @@ function App() {
                                                                     isLast={
                                                                         visibleIndex ===
                                                                         visibleItems.length -
-                                                                            1
+                                                                        1
                                                                     }
                                                                     isFirstInDisplayedSegment={
                                                                         isFirstInDisplayedSegment
@@ -2045,23 +2206,63 @@ function App() {
                                                 )}
                                             </div>
 
-                                            <div className="mt-2 border-t border-slate-100 pt-5 text-xs leading-5 text-slate-500">
-                                                Historical accident indicators describe recorded road history, not live incidents. Low-risk indicators remain available for inspection through the context controls.
+                                            <div className="mt-3 border-t-2 border-dashed border-slate-200 pt-5 text-xs leading-5 text-slate-500">
+                                                Historical accident indicators describe recorded road history, not live incidents.
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="py-12 text-center text-sm text-slate-500">
+                                        <div className="py-16 text-center text-sm text-slate-500">
                                             Route instructions are not available.
                                         </div>
                                     )}
                                 </div>
                             </div>
+
+                            <div className="space-y-6">
+                                <BreakPlanCard restPlan={restPlan} />
+
+                                <div className="border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-9 w-9 items-center justify-center border-2 border-slate-900 bg-amber-400 text-sm font-black">
+                                            ✓
+                                        </div>
+
+                                        <div>
+                                            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                                                Arrival planning
+                                            </div>
+
+                                            <div className="mt-0.5 text-base font-black">
+                                                Expected arrival
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-5 border-t-2 border-slate-100 pt-4">
+                                        <div className="text-3xl font-black tabular-nums">
+                                            {formatTime(
+                                                restPlan?.planned_arrival_time,
+                                            )}
+                                        </div>
+
+                                        <div className="mt-2 text-xs leading-5 text-slate-500">
+                                            Calculated from the returned route and rest plan.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
-                    <footer className="border-t border-slate-200 bg-white">
-                        <div className="mx-auto max-w-7xl px-6 py-8 text-sm text-slate-500">
-                            Route and journey information is calculated from the selected trip and returned route data.
+                    <footer className="border-t-2 border-slate-900 bg-slate-950 text-white">
+                        <div className="mx-auto flex max-w-[1440px] flex-col gap-2 px-5 py-7 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                            <span className="font-black uppercase tracking-[0.16em] text-white">
+                                TruckView
+                            </span>
+
+                            <span>
+                                Route and journey information is calculated from the selected trip and returned route data.
+                            </span>
                         </div>
                     </footer>
                 </>
